@@ -1,0 +1,59 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Container from '../../components/Container.astro';
+import PostCard from '../../components/PostCard.astro';
+import { getTagInitial, getAllTagSlugs } from '../../lib/api';
+import type { GetStaticPaths } from 'astro';
+
+export const getStaticPaths: GetStaticPaths = async () => {
+  const tagSlugs = await getAllTagSlugs();
+  return tagSlugs.map((slug) => ({ params: { slug } }));
+};
+
+const { slug } = Astro.params;
+const data = await getTagInitial(slug!, 20);
+const publication = data.publication;
+if (!publication?.posts) {
+  return Astro.redirect('/404');
+}
+const tag = data.tag;
+const posts = publication.posts.edges.map((e) => e.node);
+---
+
+<BaseLayout
+  title={tag ? `${tag.name} - ${publication.displayTitle || publication.title}` : publication.displayTitle || publication.title}
+  description={tag?.tagline}
+  publication={publication}
+  pageType="home"
+>
+  <Container class="py-12">
+    {/* Tag header */}
+    <header class="mb-12 text-center">
+      {tag?.logo && (
+        <img src={tag.logo} alt={tag.name} class="mx-auto mb-4 h-16 w-16 rounded-full" width="64" height="64" decoding="async" />
+      )}
+      <h1 class="font-heading text-3xl font-bold sm:text-4xl">
+        #{tag?.name || slug}
+      </h1>
+      {tag?.tagline && (
+        <p class="mx-auto mt-3 max-w-2xl text-lg text-slate-600 dark:text-slate-400">
+          {tag.tagline}
+        </p>
+      )}
+      <p class="mt-2 text-sm text-slate-500">
+        {posts.length} post{posts.length !== 1 && 's'}
+      </p>
+    </header>
+
+    {/* Posts grid */}
+    {posts.length > 0 ? (
+      <div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+        {posts.map((post) => (
+          <PostCard post={post} />
+        ))}
+      </div>
+    ) : (
+      <p class="text-center text-slate-500">No posts found for this tag.</p>
+    )}
+  </Container>
+</BaseLayout>

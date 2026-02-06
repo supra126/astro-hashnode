@@ -1,0 +1,31 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Container from '../components/Container.astro';
+import { getPublicationByHost } from '../lib/api';
+
+const { publication } = await getPublicationByHost();
+---
+
+<BaseLayout
+  title="404 - Page Not Found"
+  description="The page you are looking for does not exist."
+  publication={publication}
+  pageType="static"
+  noindex
+>
+  <Container class="py-24">
+    <div class="mx-auto max-w-md text-center">
+      <p class="text-7xl font-bold text-slate-200 dark:text-slate-800">404</p>
+      <h1 class="mt-4 font-heading text-2xl font-bold">Page Not Found</h1>
+      <p class="mt-2 text-slate-600 dark:text-slate-400">
+        The page you are looking for doesn't exist or has been moved.
+      </p>
+      <a
+        href="/"
+        class="mt-6 inline-block rounded-lg bg-blue-600 px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+      >
+        Back to Home
+      </a>
+    </div>
+  </Container>
+</BaseLayout>

@@ -1,0 +1,60 @@
+---
+import type { Publication } from '../types';
+
+interface Props {
+  title: string;
+  description?: string;
+  canonicalUrl?: string;
+  ogImage?: string;
+  ogType?: string;
+  publication: Publication;
+  noindex?: boolean;
+}
+
+const {
+  title,
+  description,
+  canonicalUrl,
+  ogImage,
+  ogType = 'website',
+  publication,
+  noindex = false,
+} = Astro.props;
+
+const siteTitle = publication.displayTitle || publication.title;
+const metaDescription = description || publication.descriptionSEO || '';
+const ogImg = ogImage || publication.ogMetaData?.image || '';
+const canonical = canonicalUrl || Astro.url.href;
+---
+
+<!-- Primary Meta Tags -->
+<title>{title}</title>
+<meta name="title" content={title} />
+{metaDescription && <meta name="description" content={metaDescription} />}
+{noindex && <meta name="robots" content="noindex, nofollow" />}
+<link rel="canonical" href={canonical} />
+
+<!-- Favicon -->
+{publication.favicon ? (
+  <link rel="icon" type="image/png" href={publication.favicon} />
+) : (
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+)}
+
+<!-- Open Graph / Facebook -->
+<meta property="og:type" content={ogType} />
+<meta property="og:url" content={canonical} />
+<meta property="og:title" content={title} />
+{metaDescription && <meta property="og:description" content={metaDescription} />}
+{ogImg && <meta property="og:image" content={ogImg} />}
+<meta property="og:site_name" content={siteTitle} />
+
+<!-- Twitter -->
+<meta property="twitter:card" content="summary_large_image" />
+<meta property="twitter:url" content={canonical} />
+<meta property="twitter:title" content={title} />
+{metaDescription && <meta property="twitter:description" content={metaDescription} />}
+{ogImg && <meta property="twitter:image" content={ogImg} />}
+
+<!-- RSS -->
+<link rel="alternate" type="application/rss+xml" title={siteTitle} href="/rss.xml" />

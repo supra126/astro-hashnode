@@ -1,0 +1,121 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import Container from '../../components/Container.astro';
+import PostCard from '../../components/PostCard.astro';
+import { getSeriesPageInitial, getPublicationByHost } from '../../lib/api';
+import { SITE_LANG } from '../../lib/client';
+import type { GetStaticPaths } from 'astro';
+
+export const getStaticPaths: GetStaticPaths = async () => {
+  // Extract series slugs from navbar items
+  const { publication } = await getPublicationByHost();
+  const seriesSlugs: string[] = [];
+
+  for (const item of publication.preferences?.navbarItems ?? []) {
+    if (item.type === 'series' && item.url) {
+      // Extract slug from URL like /series/my-series
+      const match = item.url.match(/\/series\/(.+)/);
+      if (match) seriesSlugs.push(match[1]);
+    }
+  }
+
+  // If no series in navbar, return empty (pages won't be generated)
+  return seriesSlugs.map((slug) => ({ params: { slug } }));
+};
+
+const { slug } = Astro.params;
+const data = await getSeriesPageInitial(slug!, 20);
+const publication = data.publication;
+const series = publication.series;
+
+if (!series) {
+  return Astro.redirect('/404');
+}
+
+const posts = series.posts?.edges.map((e) => e.node) ?? [];
+---
+
+<BaseLayout
+  title={`${series.name} - ${publication.displayTitle || publication.title}`}
+  description={series.description?.text}
+  ogImage={series.coverImage}
+  publication={publication}
+  pageType="home"
+>
+  <Container class="py-12">
+    {/* Series header */}
+    <header class="mb-12">
+      {series.coverImage && (
+        <img
+          src={series.coverImage}
+          alt={series.name}
+          class="mb-6 aspect-[3/1] w-full rounded-xl object-cover"
+          fetchpriority="high"
+          width="1200"
+          height="400"
+          decoding="async"
+        />
+      )}
+      <h1 class="font-heading text-3xl font-bold sm:text-4xl">
+        {series.name}
+      </h1>
+      {series.description?.html && (
+        <div
+          class="mt-4 text-lg text-slate-600 dark:text-slate-400 prose dark:prose-invert max-w-none"
+          set:html={series.description.html}
+        />
+      )}
+      {series.author && (
+        <p class="mt-3 text-sm text-slate-500">
+          By {series.author.name} &middot; {posts.length} post{posts.length !== 1 && 's'}
+        </p>
+      )}
+    </header>
+
+    {/* Ordered post list */}
+    {posts.length > 0 ? (
+      <div class="space-y-6">
+        {posts.map((post, index) => (
+          <article class="flex gap-4 rounded-xl border border-slate-200 p-5 transition-shadow hover:shadow-md dark:border-slate-800">
+            <span class="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+              {index + 1}
+            </span>
+            <div class="min-w-0 flex-1">
+              <h3 class="font-heading text-lg font-bold">
+                <a href={`/${post.slug}`} class="hover:text-blue-600 dark:hover:text-blue-400">
+                  {post.title}
+                </a>
+              </h3>
+              <p class="mt-1 text-sm text-slate-600 dark:text-slate-400 line-clamp-2">
+                {post.brief}
+              </p>
+              <div class="mt-2 flex items-center gap-2 text-xs text-slate-500">
+                <time datetime={post.publishedAt}>
+                  {new Date(post.publishedAt).toLocaleDateString(SITE_LANG)}
+                </time>
+                {post.readTimeInMinutes && (
+                  <>
+                    <span>&middot;</span>
+                    <span>{post.readTimeInMinutes} min</span>
+                  </>
+                )}
+              </div>
+            </div>
+            {post.coverImage?.url && (
+              <a href={`/${post.slug}`} class="hidden flex-shrink-0 sm:block">
+                <img
+                  src={post.coverImage.url}
+                  alt={post.title}
+                  class="h-20 w-32 rounded-lg object-cover"
+                  loading="lazy"
+                />
+              </a>
+            )}
+          </article>
+        ))}
+      </div>
+    ) : (
+      <p class="text-center text-slate-500">No posts in this series yet.</p>
+    )}
+  </Container>
+</BaseLayout>

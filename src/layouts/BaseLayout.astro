@@ -1,0 +1,113 @@
+---
+import SEOHead from '../components/SEOHead.astro';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import SearchModal from '../components/SearchModal.astro';
+import Analytics from '../components/Analytics.astro';
+import type { Publication } from '../types';
+import { SITE_LANG } from '../lib/client';
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description?: string;
+  canonicalUrl?: string;
+  ogImage?: string;
+  ogType?: string;
+  publication: Publication;
+  noindex?: boolean;
+  /** CSS page type for custom CSS injection: 'home' | 'post' | 'static' */
+  pageType?: 'home' | 'post' | 'static';
+  /** Current active navbar item ID */
+  currentMenuId?: string | null;
+  /** LCP image URL for preload hint */
+  lcpImage?: string;
+}
+
+const {
+  title,
+  description,
+  canonicalUrl,
+  ogImage,
+  ogType,
+  publication,
+  noindex,
+  pageType = 'home',
+  currentMenuId,
+  lcpImage,
+} = Astro.props;
+
+// Custom CSS from Hashnode publication settings
+const customCSS = publication.features?.customCSS?.isEnabled
+  ? publication.features.customCSS.published
+  : null;
+
+const pageCustomCSS =
+  pageType === 'home'
+    ? customCSS?.homeMinified
+    : pageType === 'post'
+      ? customCSS?.postMinified
+      : customCSS?.staticMinified;
+---
+
+<html lang={SITE_LANG} class="scroll-smooth">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+
+    <!-- Fonts: Self-hosted variable fonts (Inter + Plus Jakarta Sans) -->
+    <link rel="preload" href="/fonts/Inter-latin.var.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/PlusJakartaSans-latin.var.woff2" as="font" type="font/woff2" crossorigin />
+
+    <!-- LCP image preload -->
+    {lcpImage && <link rel="preload" as="image" href={lcpImage} fetchpriority="high" />}
+
+    <SEOHead
+      title={title}
+      description={description}
+      canonicalUrl={canonicalUrl}
+      ogImage={ogImage}
+      ogType={ogType}
+      publication={publication}
+      noindex={noindex}
+    />
+
+    <!-- Analytics integrations -->
+    <Analytics integrations={publication.integrations} />
+
+    <!-- Hashnode custom CSS -->
+    {pageCustomCSS && <style set:html={pageCustomCSS} />}
+
+    <!-- Publication custom meta tags -->
+    {publication.metaTags && <Fragment set:html={publication.metaTags} />}
+
+    <!-- Dark mode: prevent flash of wrong theme -->
+    <script is:inline>
+      (function () {
+        const stored = localStorage.getItem('theme');
+        if (stored === 'dark' || (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
+  </head>
+  <body class="min-h-screen bg-white text-slate-900 antialiased dark:bg-neutral-950 dark:text-slate-100">
+    <a
+      href="#main-content"
+      class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:shadow-md dark:focus:bg-slate-800"
+    >
+      Skip to content
+    </a>
+
+    <Header publication={publication} currentMenuId={currentMenuId} />
+
+    <main id="main-content">
+      <slot />
+    </main>
+
+    <Footer publication={publication} />
+
+    <SearchModal publicationId={publication.id} />
+  </body>
+</html>

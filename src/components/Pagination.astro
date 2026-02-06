@@ -1,0 +1,83 @@
+---
+interface Props {
+  currentPage: number;
+  totalPages: number;
+  basePath?: string;
+}
+
+const { currentPage, totalPages, basePath = '' } = Astro.props;
+
+function getPageUrl(page: number) {
+  if (page === 1) return basePath || '/';
+  return `${basePath}/page/${page}`;
+}
+
+// Show at most 5 page numbers around current
+const pages: number[] = [];
+const start = Math.max(1, currentPage - 2);
+const end = Math.min(totalPages, currentPage + 2);
+for (let i = start; i <= end; i++) {
+  pages.push(i);
+}
+---
+
+{totalPages > 1 && (
+  <nav class="mt-12 flex items-center justify-center gap-2" aria-label="Pagination">
+    {/* Previous */}
+    {currentPage > 1 ? (
+      <a
+        href={getPageUrl(currentPage - 1)}
+        class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+        aria-label="Previous page"
+      >
+        &larr; Prev
+      </a>
+    ) : (
+      <span class="rounded-lg border border-slate-100 px-4 py-2 text-sm font-medium text-slate-300 dark:border-slate-800 dark:text-slate-600">
+        &larr; Prev
+      </span>
+    )}
+
+    {/* Page numbers */}
+    {start > 1 && (
+      <>
+        <a href={getPageUrl(1)} class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">1</a>
+        {start > 2 && <span class="px-1 text-slate-400">...</span>}
+      </>
+    )}
+
+    {pages.map((page) => (
+      page === currentPage ? (
+        <span class="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white" aria-current="page">
+          {page}
+        </span>
+      ) : (
+        <a href={getPageUrl(page)} class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+          {page}
+        </a>
+      )
+    ))}
+
+    {end < totalPages && (
+      <>
+        {end < totalPages - 1 && <span class="px-1 text-slate-400">...</span>}
+        <a href={getPageUrl(totalPages)} class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">{totalPages}</a>
+      </>
+    )}
+
+    {/* Next */}
+    {currentPage < totalPages ? (
+      <a
+        href={getPageUrl(currentPage + 1)}
+        class="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+        aria-label="Next page"
+      >
+        Next &rarr;
+      </a>
+    ) : (
+      <span class="rounded-lg border border-slate-100 px-4 py-2 text-sm font-medium text-slate-300 dark:border-slate-800 dark:text-slate-600">
+        Next &rarr;
+      </span>
+    )}
+  </nav>
+)}

@@ -1,0 +1,105 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Container from '../components/Container.astro';
+import PostCard from '../components/PostCard.astro';
+import { getNewsletter } from '../lib/api';
+
+const data = await getNewsletter();
+if (!data?.publication) {
+  return Astro.redirect('/404');
+}
+const publication = data.publication;
+const recentPosts = publication.recentPosts?.edges.map((e) => e.node) ?? [];
+const siteTitle = publication.displayTitle || publication.title;
+---
+
+<BaseLayout
+  title={`Newsletter - ${siteTitle}`}
+  description={`Subscribe to ${siteTitle} newsletter`}
+  publication={publication}
+  pageType="static"
+>
+  <Container class="py-16">
+    <div class="mx-auto max-w-2xl text-center">
+      <h1 class="font-heading text-3xl font-bold sm:text-4xl">
+        Subscribe to {siteTitle}
+      </h1>
+      <p class="mt-4 text-lg text-slate-600 dark:text-slate-400">
+        Get the latest posts delivered right to your inbox.
+      </p>
+
+      {/* Newsletter form */}
+      <form
+        id="newsletter-form"
+        class="mt-8 flex flex-col gap-3 sm:flex-row sm:gap-0"
+      >
+        <input
+          type="email"
+          id="newsletter-email"
+          placeholder="your@email.com"
+          required
+          class="flex-1 rounded-lg border border-slate-300 px-4 py-3 text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 sm:rounded-r-none"
+        />
+        <button
+          type="submit"
+          class="rounded-lg bg-blue-600 px-6 py-3 font-medium text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 sm:rounded-l-none"
+        >
+          Subscribe
+        </button>
+      </form>
+
+      <p id="newsletter-message" class="mt-3 hidden text-sm"></p>
+    </div>
+
+    {/* Recent posts */}
+    {recentPosts.length > 0 && (
+      <div class="mt-16">
+        <h2 class="mb-8 text-center font-heading text-2xl font-bold">Recent Posts</h2>
+        <div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+          {recentPosts.map((post) => (
+            <PostCard post={post} />
+          ))}
+        </div>
+      </div>
+    )}
+  </Container>
+</BaseLayout>
+
+<script define:vars={{ publicationId: publication?.id ?? '' }}>
+  const form = document.getElementById('newsletter-form');
+  const emailInput = document.getElementById('newsletter-email');
+  const message = document.getElementById('newsletter-message');
+
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = emailInput.value;
+    message.classList.remove('hidden', 'text-green-600', 'text-red-600');
+
+    try {
+      const res = await fetch('https://gql.hashnode.com', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: `mutation SubscribeToNewsletter($input: SubscribeToNewsletterInput!) {
+            subscribeToNewsletter(input: $input) { status }
+          }`,
+          variables: {
+            input: { publicationId, email },
+          },
+        }),
+      });
+
+      const data = await res.json();
+      if (data.errors) {
+        throw new Error(data.errors[0]?.message || 'Subscription failed');
+      }
+
+      message.textContent = 'You have been subscribed successfully!';
+      message.classList.add('text-green-600');
+      emailInput.value = '';
+    } catch (err) {
+      message.textContent = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+      message.classList.add('text-red-600');
+    }
+  });
+</script>

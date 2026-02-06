@@ -1,0 +1,36 @@
+---
+import type { User } from '../types';
+
+interface Props {
+  author: User;
+}
+
+const { author } = Astro.props;
+---
+
+<div class="flex items-start gap-4 rounded-xl border border-slate-200 p-6 dark:border-slate-800">
+  {author.profilePicture && (
+    <img
+      src={author.profilePicture}
+      alt={author.name}
+      class="h-16 w-16 flex-shrink-0 rounded-full"
+      loading="lazy"
+      decoding="async"
+    />
+  )}
+  <div>
+    <h3 class="font-heading text-lg font-bold">
+      <a
+        href={`https://hashnode.com/@${author.username}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        class="hover:text-blue-600 dark:hover:text-blue-400"
+      >
+        {author.name}
+      </a>
+    </h3>
+    {author.bio?.html && (
+      <div class="mt-1 text-sm text-slate-600 dark:text-slate-400 line-clamp-3" set:html={author.bio.html} />
+    )}
+  </div>
+</div>

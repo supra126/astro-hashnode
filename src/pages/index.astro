@@ -1,0 +1,96 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Container from '../components/Container.astro';
+import PostCard from '../components/PostCard.astro';
+import Pagination from '../components/Pagination.astro';
+import { getHomePageInitial, getHomePagePosts } from '../lib/api';
+import { SITE_LANG } from '../lib/client';
+
+const POSTS_PER_PAGE = 9;
+
+const { publication } = await getHomePageInitial();
+const { publication: postsData } = await getHomePagePosts(POSTS_PER_PAGE);
+const posts = postsData.posts.edges.map((e) => e.node);
+const totalPosts = postsData.posts.totalDocuments ?? posts.length;
+const totalPages = Math.ceil(totalPosts / POSTS_PER_PAGE);
+
+const siteTitle = publication.displayTitle || publication.title;
+---
+
+<BaseLayout
+  title={siteTitle}
+  description={publication.descriptionSEO}
+  publication={publication}
+  pageType="home"
+  lcpImage={publication.pinnedPost?.coverImage?.url}
+>
+  <Container class="py-12">
+    {/* Hero / Pinned Post */}
+    {publication.pinnedPost && (
+      <section class="mb-12 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900">
+        {publication.pinnedPost.coverImage?.url && (
+          <a href={`/${publication.pinnedPost.slug}`}>
+            <img
+              src={publication.pinnedPost.coverImage.url}
+              alt={publication.pinnedPost.title}
+              class="aspect-[2.5/1] w-full object-cover"
+              fetchpriority="high"
+              width="1200"
+              height="480"
+              decoding="async"
+            />
+          </a>
+        )}
+        <div class="p-6 sm:p-8">
+          <span class="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-400">Pinned</span>
+          <h2 class="mt-2 font-heading text-2xl font-bold sm:text-3xl">
+            <a href={`/${publication.pinnedPost.slug}`} class="hover:text-blue-600 dark:hover:text-blue-400">
+              {publication.pinnedPost.title}
+            </a>
+          </h2>
+          {publication.pinnedPost.brief && (
+            <p class="mt-3 text-slate-600 dark:text-slate-400 line-clamp-3">
+              {publication.pinnedPost.brief}
+            </p>
+          )}
+          <div class="mt-4 flex items-center gap-3 text-sm text-slate-500">
+            {publication.pinnedPost.author.profilePicture && (
+              <img
+                src={publication.pinnedPost.author.profilePicture}
+                alt={publication.pinnedPost.author.name}
+                class="h-8 w-8 rounded-full"
+                width="32"
+                height="32"
+                loading="lazy"
+                decoding="async"
+              />
+            )}
+            <span class="font-medium text-slate-700 dark:text-slate-300">{publication.pinnedPost.author.name}</span>
+            <span>&middot;</span>
+            <time datetime={publication.pinnedPost.publishedAt}>
+              {new Date(publication.pinnedPost.publishedAt).toLocaleDateString(SITE_LANG)}
+            </time>
+            {publication.pinnedPost.readTimeInMinutes && (
+              <>
+                <span>&middot;</span>
+                <span>{publication.pinnedPost.readTimeInMinutes} min read</span>
+              </>
+            )}
+          </div>
+        </div>
+      </section>
+    )}
+
+    {/* Posts Grid */}
+    <section>
+      <h2 class="mb-8 font-heading text-2xl font-bold">Recent Posts</h2>
+      <div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+        {posts.map((post) => (
+          <PostCard post={post} />
+        ))}
+      </div>
+
+      <Pagination currentPage={1} totalPages={totalPages} />
+    </section>
+  </Container>
+</BaseLayout>

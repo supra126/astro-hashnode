@@ -1,0 +1,41 @@
+import { gql } from 'graphql-request';
+import { PageInfoFragment } from './fragments';
+
+export const SearchPostsOfPublicationQuery = gql`
+  ${PageInfoFragment}
+  query SearchPostsOfPublication(
+    $first: Int!
+    $filter: SearchPostsOfPublicationFilter!
+    $after: String
+  ) {
+    searchPostsOfPublication(first: $first, after: $after, filter: $filter) {
+      edges {
+        cursor
+        node {
+          id
+          brief
+          title
+          cuid
+          slug
+          reactionCount
+          publishedAt
+          url
+          coverImage {
+            url
+          }
+          author {
+            id
+            name
+          }
+          publication {
+            title
+            url
+          }
+        }
+      }
+      pageInfo {
+        ...PageInfo
+      }
+    }
+  }
+`;

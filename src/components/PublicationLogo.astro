@@ -1,0 +1,49 @@
+---
+import type { Publication } from '../types';
+
+interface Props {
+  publication: Publication;
+  size?: 'sm' | 'lg' | 'xl';
+}
+
+const { publication, size = 'lg' } = Astro.props;
+
+const logo = publication.preferences?.logo;
+const darkModeLogo = publication.preferences?.darkMode?.logo;
+const title = publication.displayTitle || publication.title;
+
+const sizeClasses = {
+  sm: 'max-h-8',
+  lg: 'max-h-10',
+  xl: 'max-h-14',
+};
+
+const textSizeClasses = {
+  sm: 'text-lg',
+  lg: 'text-xl',
+  xl: 'text-2xl',
+};
+---
+
+<a href="/" class="flex items-center gap-2" aria-label={title}>
+  {logo ? (
+    <>
+      <img
+        src={logo}
+        alt={title}
+        class:list={[sizeClasses[size], 'block dark:hidden']}
+        decoding="async"
+      />
+      <img
+        src={darkModeLogo || logo}
+        alt={title}
+        class:list={[sizeClasses[size], 'hidden dark:block']}
+        decoding="async"
+      />
+    </>
+  ) : (
+    <span class:list={[textSizeClasses[size], 'font-heading font-bold']}>
+      {title}
+    </span>
+  )}
+</a>

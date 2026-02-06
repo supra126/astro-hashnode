@@ -1,0 +1,138 @@
+---
+import type { PublicationIntegrations } from '../types';
+
+interface Props {
+  integrations?: PublicationIntegrations;
+}
+
+const { integrations } = Astro.props;
+
+const gaTrackingID = integrations?.gaTrackingID;
+const gTagManagerID = integrations?.gTagManagerID;
+const fbPixelID = integrations?.fbPixelID;
+const hotjarSiteID = integrations?.hotjarSiteID;
+const matomoURL = integrations?.matomoURL;
+const matomoSiteID = integrations?.matomoSiteID;
+const fathomSiteID = integrations?.fathomSiteID;
+const fathomCustomDomain = integrations?.fathomCustomDomain;
+const fathomCustomDomainEnabled = integrations?.fathomCustomDomainEnabled;
+const plausibleEnabled = integrations?.plausibleAnalyticsEnabled;
+const koalaPublicKey = integrations?.koalaPublicKey;
+const msClarityID = integrations?.msClarityID;
+const umamiWebsiteUUID = integrations?.umamiWebsiteUUID;
+---
+
+{/* Google Analytics (GA4) */}
+{gaTrackingID && (
+  <>
+    <script is:inline async src={`https://www.googletagmanager.com/gtag/js?id=${gaTrackingID}`}></script>
+    <script is:inline define:vars={{ gaTrackingID }}>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() { dataLayer.push(arguments); }
+      gtag('js', new Date());
+      gtag('config', gaTrackingID);
+    </script>
+  </>
+)}
+
+{/* Google Tag Manager */}
+{gTagManagerID && (
+  <>
+    <script is:inline define:vars={{ gTagManagerID }}>
+      (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+      new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+      j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+      'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+      })(window,document,'script','dataLayer',gTagManagerID);
+    </script>
+  </>
+)}
+
+{/* Facebook Pixel */}
+{fbPixelID && (
+  <script is:inline define:vars={{ fbPixelID }}>
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s)}(window, document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+    fbq('init', fbPixelID);
+    fbq('track', 'PageView');
+  </script>
+)}
+
+{/* Hotjar */}
+{hotjarSiteID && (
+  <script is:inline define:vars={{ hotjarSiteID }}>
+    (function(h,o,t,j,a,r){
+      h.hj=h.hj||function(){(h.hj.q=h.hj.q||[]).push(arguments)};
+      h._hjSettings={hjid:hotjarSiteID,hjsv:6};
+      a=o.getElementsByTagName('head')[0];
+      r=o.createElement('script');r.async=1;
+      r.src=t+h._hjSettings.hjid+j+h._hjSettings.hjsv;
+      a.appendChild(r);
+    })(window,document,'https://static.hotjar.com/c/hotjar-','.js?sv=');
+  </script>
+)}
+
+{/* Matomo */}
+{matomoURL && matomoSiteID && (
+  <script is:inline define:vars={{ matomoURL, matomoSiteID }}>
+    var _paq = window._paq = window._paq || [];
+    _paq.push(['trackPageView']);
+    _paq.push(['enableLinkTracking']);
+    (function() {
+      var u = matomoURL.endsWith('/') ? matomoURL : matomoURL + '/';
+      _paq.push(['setTrackerUrl', u+'matomo.php']);
+      _paq.push(['setSiteId', matomoSiteID]);
+      var d=document, g=d.createElement('script'), s=d.getElementsByTagName('script')[0];
+      g.async=true; g.src=u+'matomo.js'; s.parentNode.insertBefore(g,s);
+    })();
+  </script>
+)}
+
+{/* Fathom */}
+{fathomSiteID && (
+  <script
+    is:inline
+    src={fathomCustomDomainEnabled && fathomCustomDomain
+      ? `https://${fathomCustomDomain}/script.js`
+      : 'https://cdn.usefathom.com/script.js'}
+    data-site={fathomSiteID}
+    defer
+  ></script>
+)}
+
+{/* Plausible */}
+{plausibleEnabled && (
+  <script is:inline defer data-domain={new URL(Astro.site || 'https://example.com').hostname} src="https://plausible.io/js/script.js"></script>
+)}
+
+{/* Koala */}
+{koalaPublicKey && (
+  <script is:inline define:vars={{ koalaPublicKey }}>
+    !function(t){if(window.ko)return;window.ko=[],
+    ["identify","track","removeListeners","open","on","off","qualify","ready"].forEach(function(t){ko[t]=function(){var n=[].slice.call(arguments);return n.unshift(t),ko.push(n),ko}});var n=document.createElement("script");n.async=!0,
+    n.setAttribute("src","https://cdn.getkoala.com/v1/"+koalaPublicKey+"/sdk.js"),
+    (document.body || document.head).appendChild(n)}();
+  </script>
+)}
+
+{/* Microsoft Clarity */}
+{msClarityID && (
+  <script is:inline define:vars={{ msClarityID }}>
+    (function(c,l,a,r,i,t,y){
+      c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
+      t=l.createElement(r);t.async=1;t.src="https://www.clarity.ms/tag/"+i;
+      y=l.getElementsByTagName(r)[0];y.parentNode.insertBefore(t,y);
+    })(window,document,"clarity","script",msClarityID);
+  </script>
+)}
+
+{/* Umami */}
+{umamiWebsiteUUID && (
+  <script is:inline async defer data-website-id={umamiWebsiteUUID} src="https://analytics.umami.is/script.js"></script>
+)}

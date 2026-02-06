@@ -1,0 +1,115 @@
+---
+import type { Comment } from '../types';
+import { SITE_LANG } from '../lib/client';
+
+interface Props {
+  comments: Comment[];
+  totalComments: number;
+}
+
+const { comments, totalComments } = Astro.props;
+---
+
+<section class="border-t border-slate-200 pt-10 dark:border-slate-800" id="comments">
+  <h2 class="mb-8 font-heading text-2xl font-bold">
+    Comments ({totalComments})
+  </h2>
+
+  {comments.length === 0 ? (
+    <p class="text-slate-500 dark:text-slate-400">
+      No comments yet. Be the first to share your thoughts!
+    </p>
+  ) : (
+    <div class="space-y-8">
+      {comments.map((comment) => (
+        <div class="group">
+          {/* Main comment */}
+          <div class="flex gap-4">
+            <img
+              src={comment.author.profilePicture}
+              alt={comment.author.name}
+              class="h-10 w-10 flex-shrink-0 rounded-full"
+              loading="lazy"
+            />
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center gap-2">
+                <a
+                  href={`https://hashnode.com/@${comment.author.username}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-sm font-semibold text-slate-900 hover:text-blue-600 dark:text-slate-100 dark:hover:text-blue-400"
+                >
+                  {comment.author.name}
+                </a>
+                <time
+                  datetime={comment.dateAdded}
+                  class="text-xs text-slate-400"
+                >
+                  {new Date(comment.dateAdded).toLocaleDateString(SITE_LANG, {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                  })}
+                </time>
+                {comment.totalReactions > 0 && (
+                  <span class="flex items-center gap-1 text-xs text-slate-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+                    </svg>
+                    {comment.totalReactions}
+                  </span>
+                )}
+              </div>
+              <div
+                class="mt-2 text-sm text-slate-700 dark:text-slate-300 prose prose-sm dark:prose-invert max-w-none"
+                set:html={comment.content.html}
+              />
+            </div>
+          </div>
+
+          {/* Replies */}
+          {comment.replies && comment.replies.edges.length > 0 && (
+            <div class="ml-14 mt-4 space-y-4 border-l-2 border-slate-100 pl-4 dark:border-slate-800">
+              {comment.replies.edges.map(({ node: reply }) => (
+                <div class="flex gap-3">
+                  <img
+                    src={reply.author.profilePicture}
+                    alt={reply.author.name}
+                    class="h-8 w-8 flex-shrink-0 rounded-full"
+                    loading="lazy"
+                  />
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-2">
+                      <a
+                        href={`https://hashnode.com/@${reply.author.username}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="text-sm font-semibold text-slate-900 hover:text-blue-600 dark:text-slate-100 dark:hover:text-blue-400"
+                      >
+                        {reply.author.name}
+                      </a>
+                      <time
+                        datetime={reply.dateAdded}
+                        class="text-xs text-slate-400"
+                      >
+                        {new Date(reply.dateAdded).toLocaleDateString(SITE_LANG, {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                      </time>
+                    </div>
+                    <div
+                      class="mt-1.5 text-sm text-slate-700 dark:text-slate-300 prose prose-sm dark:prose-invert max-w-none"
+                      set:html={reply.content.html}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  )}
+</section>

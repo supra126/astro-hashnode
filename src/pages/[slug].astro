@@ -1,0 +1,249 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Container from '../components/Container.astro';
+import PostCard from '../components/PostCard.astro';
+import TableOfContents from '../components/TableOfContents.astro';
+import AuthorCard from '../components/AuthorCard.astro';
+import Comments from '../components/Comments.astro';
+import GiscusComments from '../components/GiscusComments.astro';
+import { getSinglePost, getHomePagePosts, getPageByPublication, getAllPostSlugs } from '../lib/api';
+import { SITE_LANG } from '../lib/client';
+import type { GetStaticPaths } from 'astro';
+
+export const getStaticPaths: GetStaticPaths = async () => {
+  const slugs = await getAllPostSlugs();
+  return slugs.map((slug) => ({ params: { slug } }));
+};
+
+const { slug } = Astro.params;
+if (!slug) {
+  return Astro.redirect('/404');
+}
+
+const data = await getSinglePost(slug);
+const publication = data?.publication;
+if (!publication) {
+  return Astro.redirect('/404');
+}
+const post = publication.post;
+
+// If no post found, try static page
+let staticPage = null;
+if (!post) {
+  const pageData = await getPageByPublication(slug);
+  staticPage = pageData?.publication?.staticPage ?? null;
+}
+
+// If neither exists, 404
+if (!post && !staticPage) {
+  return Astro.redirect('/404');
+}
+
+// Fetch related posts for post pages
+let relatedPosts: any[] = [];
+if (post) {
+  const { publication: moreData } = await getHomePagePosts(3);
+  relatedPosts = moreData.posts.edges
+    .map((e) => e.node)
+    .filter((p) => p.slug !== slug);
+}
+
+// SEO
+const title = post
+  ? (post.seo?.title || post.title)
+  : (staticPage!.seo?.title || staticPage!.title);
+const description = post
+  ? (post.seo?.description || post.brief)
+  : (staticPage!.seo?.description || '');
+const ogImage = post
+  ? (post.ogMetaData?.image || post.coverImage?.url)
+  : (staticPage!.ogMetaData?.image);
+
+const tocItems = post?.features?.tableOfContents?.isEnabled
+  ? post.features.tableOfContents.items
+  : [];
+
+const giscusEnabled =
+  import.meta.env.PUBLIC_GISCUS_ENABLED === 'true' &&
+  !!import.meta.env.PUBLIC_GISCUS_REPO &&
+  !!import.meta.env.PUBLIC_GISCUS_REPO_ID &&
+  !!import.meta.env.PUBLIC_GISCUS_CATEGORY_ID;
+---
+
+{post ? (
+  <BaseLayout
+    title={title}
+    description={description}
+    ogImage={ogImage}
+    ogType="article"
+    publication={publication}
+    pageType="post"
+    lcpImage={!post.preferences?.stickCoverToBottom ? post.coverImage?.url : undefined}
+  >
+    <article>
+      {/* Post Header */}
+      <Container class="py-10">
+        <header class="mx-auto max-w-3xl text-center">
+          {post.tags && post.tags.length > 0 && (
+            <div class="mb-4 flex flex-wrap justify-center gap-2">
+              {post.tags.map((tag) => (
+                <a
+                  href={`/tag/${tag.slug}`}
+                  class="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 transition-colors hover:bg-blue-100 hover:text-blue-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-blue-900 dark:hover:text-blue-300"
+                >
+                  {tag.name}
+                </a>
+              ))}
+            </div>
+          )}
+
+          <h1 class="font-heading text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
+            {post.title}
+          </h1>
+
+          {post.subtitle && (
+            <p class="mt-4 text-lg text-slate-600 dark:text-slate-400">
+              {post.subtitle}
+            </p>
+          )}
+
+          <div class="mt-6 flex items-center justify-center gap-4 text-sm text-slate-500">
+            {post.author.profilePicture && (
+              <img
+                src={post.author.profilePicture}
+                alt={post.author.name}
+                class="h-10 w-10 rounded-full"
+              />
+            )}
+            <div class="text-left">
+              <p class="font-medium text-slate-900 dark:text-slate-100">
+                {post.author.name}
+              </p>
+              <p>
+                <time datetime={post.publishedAt}>
+                  {new Date(post.publishedAt).toLocaleDateString(SITE_LANG, {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </time>
+                {post.readTimeInMinutes && (
+                  <> &middot; {post.readTimeInMinutes} min read</>
+                )}
+              </p>
+            </div>
+          </div>
+        </header>
+      </Container>
+
+      {/* Cover Image */}
+      {post.coverImage?.url && !post.preferences?.stickCoverToBottom && (
+        <Container class="mb-10">
+          <img
+            src={post.coverImage.url}
+            alt={post.title}
+            class:list={[
+              'mx-auto rounded-xl',
+              post.coverImage.isPortrait ? 'max-h-[600px] w-auto' : 'w-full max-w-4xl',
+            ]}
+            fetchpriority="high"
+            width="896"
+            height="480"
+            decoding="async"
+          />
+        </Container>
+      )}
+
+      {/* Content Area */}
+      <Container>
+        <div class="mx-auto max-w-4xl lg:flex lg:gap-10">
+          {/* TOC sidebar */}
+          {tocItems.length > 0 && (
+            <aside class="mb-8 lg:sticky lg:top-24 lg:mb-0 lg:w-64 lg:flex-shrink-0 lg:self-start">
+              <TableOfContents items={tocItems} />
+            </aside>
+          )}
+
+          {/* Post content */}
+          <div class:list={['min-w-0 flex-1', tocItems.length === 0 && 'mx-auto max-w-3xl']}>
+            <div
+              class="prose prose-lg dark:prose-invert max-w-none prose-headings:font-heading prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-img:rounded-lg"
+              set:html={post.content.html}
+            />
+
+            {/* Cover at bottom if stickCoverToBottom */}
+            {post.coverImage?.url && post.preferences?.stickCoverToBottom && (
+              <img
+                src={post.coverImage.url}
+                alt={post.title}
+                class="mt-8 w-full rounded-xl"
+                loading="lazy"
+                decoding="async"
+              />
+            )}
+          </div>
+        </div>
+      </Container>
+
+      {/* Author section */}
+      <Container class="mt-16">
+        <div class="mx-auto max-w-3xl">
+          <AuthorCard author={post.author} />
+        </div>
+      </Container>
+
+      {/* Comments */}
+      {!post.preferences?.disableComments && (
+        <Container class="mt-16">
+          <div class="mx-auto max-w-3xl">
+            {giscusEnabled ? (
+              <GiscusComments />
+            ) : (
+              post.comments && (
+                <Comments
+                  comments={post.comments.edges.map((e) => e.node)}
+                  totalComments={post.comments.totalDocuments ?? post.comments.edges.length}
+                />
+              )
+            )}
+          </div>
+        </Container>
+      )}
+
+      {/* Related posts */}
+      {relatedPosts.length > 0 && (
+        <Container class="mt-16 pb-12">
+          <div class="mx-auto max-w-5xl">
+            <h2 class="mb-8 font-heading text-2xl font-bold">More Posts</h2>
+            <div class="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+              {relatedPosts.slice(0, 3).map((p) => (
+                <PostCard post={p} />
+              ))}
+            </div>
+          </div>
+        </Container>
+      )}
+    </article>
+  </BaseLayout>
+) : (
+  /* Static Page */
+  <BaseLayout
+    title={title}
+    description={description}
+    ogImage={ogImage}
+    publication={publication}
+    pageType="static"
+  >
+    <Container class="py-12">
+      <div class="mx-auto max-w-3xl">
+        <h1 class="mb-8 font-heading text-3xl font-bold sm:text-4xl">
+          {staticPage!.title}
+        </h1>
+        <div
+          class="prose prose-lg dark:prose-invert max-w-none prose-headings:font-heading prose-a:text-blue-600 dark:prose-a:text-blue-400"
+          set:html={staticPage!.content.html}
+        />
+      </div>
+    </Container>
+  </BaseLayout>
+)}
