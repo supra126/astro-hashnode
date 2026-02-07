@@ -29,9 +29,11 @@ const categoryId = import.meta.env.PUBLIC_GISCUS_CATEGORY_ID;
 </section>
 
 <script is:inline>
-  (function () {
-    var giscusReady = false;
+  // Guard: only set up global observers once (they survive View Transition navigations)
+  if (!window.__giscusObserversSet) {
+  window.__giscusObserversSet = true;
 
+  (function () {
     function getGiscusTheme() {
       return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
     }
@@ -47,20 +49,19 @@ const categoryId = import.meta.env.PUBLIC_GISCUS_CATEGORY_ID;
 
     // Watch for dark mode class changes on <html>
     new MutationObserver(function () {
-      if (giscusReady) setGiscusTheme(getGiscusTheme());
+      setGiscusTheme(getGiscusTheme());
     }).observe(document.documentElement, {
       attributes: true,
       attributeFilter: ['class'],
     });
 
-    // Sync theme once Giscus iframe is ready
+    // Sync theme whenever a Giscus iframe becomes ready (works for new iframes after VT navigation)
     window.addEventListener('message', function (event) {
       if (event.origin !== 'https://giscus.app') return;
       if (!(typeof event.data === 'object' && event.data.giscus)) return;
-      if (!giscusReady) {
-        giscusReady = true;
-        setGiscusTheme(getGiscusTheme());
-      }
+      setGiscusTheme(getGiscusTheme());
     });
   })();
+
+  } // end observer guard
 </script>

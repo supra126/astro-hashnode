@@ -136,3 +136,27 @@ const umamiWebsiteUUID = integrations?.umamiWebsiteUUID;
 {umamiWebsiteUUID && (
   <script is:inline async defer data-website-id={umamiWebsiteUUID} src="https://analytics.umami.is/script.js"></script>
 )}
+
+{/* View Transitions: re-track pageviews on SPA navigation.
+     astro:after-swap only fires on VT navigations (not initial load),
+     so this won't double-count the first pageview. */}
+<script is:inline>
+  document.addEventListener('astro:after-swap', function () {
+    // GA4
+    if (window.gtag) {
+      window.gtag('event', 'page_view', { page_path: location.pathname });
+    }
+
+    // Facebook Pixel
+    if (window.fbq) {
+      window.fbq('track', 'PageView');
+    }
+
+    // Matomo
+    if (window._paq) {
+      window._paq.push(['setCustomUrl', location.href]);
+      window._paq.push(['setDocumentTitle', document.title]);
+      window._paq.push(['trackPageView']);
+    }
+  });
+</script>

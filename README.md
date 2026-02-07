@@ -11,7 +11,7 @@ Hashnode provides an official [starter kit](https://github.com/Hashnode/starter-
 
 | Metric | Next.js Starter Kit | Astro Starter Hashnode |
 |--------|-------------------|----------------|
-| Client JS | ~150 kB+ | **2.2 kB** (Astro prefetch only) |
+| Client JS | ~150 kB+ | **~15 kB** (View Transitions + Search) |
 | Build output | SSR / ISR | **Fully static** |
 | Framework overhead | React runtime | **Zero runtime** |
 
@@ -141,6 +141,21 @@ vercel --prod
 ### Netlify
 
 Click the **Deploy to Netlify** button above. The `netlify.toml` is pre-configured.
+
+### Auto-rebuild on Publish
+
+Since the site is statically generated, you need to trigger a rebuild when content changes on Hashnode.
+
+**1. Create a build hook on your platform:**
+
+- **Vercel**: Settings → Git → Deploy Hooks → Add
+- **Netlify**: Site configuration → Build & deploy → Build hooks → Add build hook
+
+**2. Add the hook URL to Hashnode:**
+
+Go to your Hashnode dashboard → Webhooks → paste the build hook URL and select the events you want to trigger a rebuild (e.g. post published, updated, deleted).
+
+Now every time you publish or edit a post on Hashnode, your site will automatically rebuild and deploy.
 
 ### Multi-site Setup
 

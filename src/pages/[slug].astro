@@ -80,7 +80,7 @@ const giscusEnabled =
     pageType="post"
     lcpImage={!post.preferences?.stickCoverToBottom ? post.coverImage?.url : undefined}
   >
-    <article>
+    <article class="pb-16">
       {/* Post Header */}
       <Container class="py-10">
         <header class="mx-auto max-w-3xl text-center">
@@ -97,7 +97,7 @@ const giscusEnabled =
             </div>
           )}
 
-          <h1 class="font-heading text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
+          <h1 class="font-heading text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl" transition:name={`post-title-${slug}`}>
             {post.title}
           </h1>
 
@@ -150,6 +150,7 @@ const giscusEnabled =
             width="896"
             height="480"
             decoding="async"
+            transition:name={`post-cover-${slug}`}
           />
         </Container>
       )}

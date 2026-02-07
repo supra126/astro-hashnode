@@ -17,6 +17,9 @@ const siteLang = SITE_LANG;
   role="dialog"
   aria-modal="true"
   aria-label="Search posts"
+  data-publication-id={publicationId}
+  data-gql-endpoint={gqlEndpoint}
+  data-site-lang={siteLang}
 >
   <!-- Backdrop -->
   <div id="search-backdrop" class="fixed inset-0 bg-black/60 backdrop-blur-sm"></div>
@@ -70,171 +73,179 @@ const siteLang = SITE_LANG;
   </div>
 </div>
 
-<script define:vars={{ publicationId, gqlEndpoint, siteLang }}>
-  const modal = document.getElementById('search-modal');
-  const backdrop = document.getElementById('search-backdrop');
-  const input = document.getElementById('search-input');
-  const searchBtn = document.getElementById('search-btn');
-  const emptyState = document.getElementById('search-empty');
-  const loadingState = document.getElementById('search-loading');
-  const noResultsState = document.getElementById('search-no-results');
-  const resultsList = document.getElementById('search-list');
+<script>
+  document.addEventListener('astro:page-load', () => {
+    const modal = document.getElementById('search-modal') as HTMLElement | null;
+    if (!modal) return;
 
-  let debounceTimer = null;
-  let searchAbort = null;
+    const backdrop = document.getElementById('search-backdrop');
+    const input = document.getElementById('search-input') as HTMLInputElement | null;
+    const searchBtn = document.getElementById('search-btn');
+    const emptyState = document.getElementById('search-empty');
+    const loadingState = document.getElementById('search-loading');
+    const noResultsState = document.getElementById('search-no-results');
+    const resultsList = document.getElementById('search-list');
 
-  function openSearch() {
-    modal?.classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
-    setTimeout(() => input?.focus(), 50);
-  }
+    const publicationId = modal.dataset.publicationId || '';
+    const gqlEndpoint = modal.dataset.gqlEndpoint || 'https://gql.hashnode.com';
+    const siteLang = modal.dataset.siteLang || 'en';
 
-  function closeSearch() {
-    modal?.classList.add('hidden');
-    document.body.style.overflow = '';
-    clearTimeout(debounceTimer);
-    if (searchAbort) { searchAbort.abort(); searchAbort = null; }
-    if (input) input.value = '';
-    showState('empty');
-  }
+    let debounceTimer: ReturnType<typeof setTimeout> | undefined;
+    let searchAbort: AbortController | null = null;
 
-  function showState(state) {
-    emptyState?.classList.toggle('hidden', state !== 'empty');
-    loadingState?.classList.toggle('hidden', state !== 'loading');
-    noResultsState?.classList.toggle('hidden', state !== 'no-results');
-    resultsList?.classList.toggle('hidden', state !== 'results');
-  }
-
-  function createResultItem(node) {
-    const li = document.createElement('li');
-    const a = document.createElement('a');
-    a.href = '/' + node.slug;
-    a.className = 'flex gap-4 px-6 py-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50';
-
-    const textDiv = document.createElement('div');
-    textDiv.className = 'min-w-0 flex-1';
-
-    const h3 = document.createElement('h3');
-    h3.className = 'font-medium text-slate-900 dark:text-slate-100 line-clamp-1';
-    h3.textContent = node.title;
-
-    const brief = document.createElement('p');
-    brief.className = 'mt-1 text-sm text-slate-500 line-clamp-2';
-    brief.textContent = node.brief || '';
-
-    const date = new Date(node.publishedAt).toLocaleDateString(siteLang, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-    const meta = document.createElement('p');
-    meta.className = 'mt-1.5 text-xs text-slate-400';
-    meta.textContent = (node.author?.name || '') + ' \u00B7 ' + date;
-
-    textDiv.appendChild(h3);
-    textDiv.appendChild(brief);
-    textDiv.appendChild(meta);
-    a.appendChild(textDiv);
-
-    if (node.coverImage?.url) {
-      const img = document.createElement('img');
-      img.src = node.coverImage.url;
-      img.alt = '';
-      img.loading = 'lazy';
-      img.className = 'hidden h-16 w-24 flex-shrink-0 rounded-lg object-cover sm:block';
-      a.appendChild(img);
+    function openSearch() {
+      modal.classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+      setTimeout(() => input?.focus(), 50);
     }
 
-    li.appendChild(a);
-    return li;
-  }
-
-  async function performSearch(query) {
-    if (!query || query.length < 2) {
+    function closeSearch() {
+      modal.classList.add('hidden');
+      document.body.style.overflow = '';
+      clearTimeout(debounceTimer);
+      if (searchAbort) { searchAbort.abort(); searchAbort = null; }
+      if (input) input.value = '';
       showState('empty');
-      return;
     }
 
-    showState('loading');
+    function showState(state: string) {
+      emptyState?.classList.toggle('hidden', state !== 'empty');
+      loadingState?.classList.toggle('hidden', state !== 'loading');
+      noResultsState?.classList.toggle('hidden', state !== 'no-results');
+      resultsList?.classList.toggle('hidden', state !== 'results');
+    }
 
-    if (searchAbort) searchAbort.abort();
-    searchAbort = new AbortController();
+    function createResultItem(node: any) {
+      const li = document.createElement('li');
+      const a = document.createElement('a');
+      a.href = '/' + node.slug;
+      a.className = 'flex gap-4 px-6 py-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50';
 
-    try {
-      const res = await fetch(gqlEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        signal: searchAbort.signal,
-        body: JSON.stringify({
-          query: `query SearchPosts($first: Int!, $filter: SearchPostsOfPublicationFilter!) {
-            searchPostsOfPublication(first: $first, filter: $filter) {
-              edges {
-                node {
-                  title
-                  brief
-                  slug
-                  publishedAt
-                  coverImage { url }
-                  author { name }
-                }
-              }
-            }
-          }`,
-          variables: {
-            first: 10,
-            filter: { query, publicationId },
-          },
-        }),
+      const textDiv = document.createElement('div');
+      textDiv.className = 'min-w-0 flex-1';
+
+      const h3 = document.createElement('h3');
+      h3.className = 'font-medium text-slate-900 dark:text-slate-100 line-clamp-1';
+      h3.textContent = node.title;
+
+      const brief = document.createElement('p');
+      brief.className = 'mt-1 text-sm text-slate-500 line-clamp-2';
+      brief.textContent = node.brief || '';
+
+      const date = new Date(node.publishedAt).toLocaleDateString(siteLang, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
       });
+      const meta = document.createElement('p');
+      meta.className = 'mt-1.5 text-xs text-slate-400';
+      meta.textContent = (node.author?.name || '') + ' \u00B7 ' + date;
 
-      const data = await res.json();
-      const edges = data?.data?.searchPostsOfPublication?.edges ?? [];
+      textDiv.appendChild(h3);
+      textDiv.appendChild(brief);
+      textDiv.appendChild(meta);
+      a.appendChild(textDiv);
 
-      if (edges.length === 0) {
-        showState('no-results');
+      if (node.coverImage?.url) {
+        const img = document.createElement('img');
+        img.src = node.coverImage.url;
+        img.alt = '';
+        img.loading = 'lazy';
+        img.className = 'hidden h-16 w-24 flex-shrink-0 rounded-lg object-cover sm:block';
+        a.appendChild(img);
+      }
+
+      li.appendChild(a);
+      return li;
+    }
+
+    async function performSearch(query: string) {
+      if (!query || query.length < 2) {
+        showState('empty');
         return;
       }
 
-      // Clear previous results safely
-      while (resultsList.firstChild) {
-        resultsList.removeChild(resultsList.firstChild);
-      }
+      showState('loading');
 
-      for (const { node } of edges) {
-        resultsList.appendChild(createResultItem(node));
-      }
+      if (searchAbort) searchAbort.abort();
+      searchAbort = new AbortController();
 
-      showState('results');
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return;
-      console.error('Search error:', err);
-      showState('no-results');
+      try {
+        const res = await fetch(gqlEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: searchAbort.signal,
+          body: JSON.stringify({
+            query: `query SearchPosts($first: Int!, $filter: SearchPostsOfPublicationFilter!) {
+              searchPostsOfPublication(first: $first, filter: $filter) {
+                edges {
+                  node {
+                    title
+                    brief
+                    slug
+                    publishedAt
+                    coverImage { url }
+                    author { name }
+                  }
+                }
+              }
+            }`,
+            variables: {
+              first: 10,
+              filter: { query, publicationId },
+            },
+          }),
+        });
+
+        const data = await res.json();
+        const edges = data?.data?.searchPostsOfPublication?.edges ?? [];
+
+        if (edges.length === 0) {
+          showState('no-results');
+          return;
+        }
+
+        // Clear previous results safely
+        while (resultsList?.firstChild) {
+          resultsList.removeChild(resultsList.firstChild);
+        }
+
+        for (const { node } of edges) {
+          resultsList?.appendChild(createResultItem(node));
+        }
+
+        showState('results');
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        console.error('Search error:', err);
+        showState('no-results');
+      }
     }
-  }
 
-  // Event listeners
-  searchBtn?.addEventListener('click', openSearch);
-  backdrop?.addEventListener('click', closeSearch);
+    // Event listeners
+    searchBtn?.addEventListener('click', openSearch);
+    backdrop?.addEventListener('click', closeSearch);
 
-  document.addEventListener('keydown', (e) => {
-    // Cmd/Ctrl+K to open search
-    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-      e.preventDefault();
-      if (modal?.classList.contains('hidden')) {
-        openSearch();
-      } else {
+    document.addEventListener('keydown', (e) => {
+      // Cmd/Ctrl+K to open search
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        if (modal.classList.contains('hidden')) {
+          openSearch();
+        } else {
+          closeSearch();
+        }
+      }
+      // ESC to close
+      if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
         closeSearch();
       }
-    }
-    // ESC to close
-    if (e.key === 'Escape' && !modal?.classList.contains('hidden')) {
-      closeSearch();
-    }
-  });
+    });
 
-  input?.addEventListener('input', (e) => {
-    clearTimeout(debounceTimer);
-    const query = e.target.value.trim();
-    debounceTimer = setTimeout(() => performSearch(query), 300);
+    input?.addEventListener('input', (e) => {
+      clearTimeout(debounceTimer);
+      const query = (e.target as HTMLInputElement).value.trim();
+      debounceTimer = setTimeout(() => performSearch(query), 300);
+    });
   });
 </script>

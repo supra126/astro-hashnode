@@ -20,11 +20,12 @@ const { post } = Astro.props;
         decoding="async"
         width="400"
         height="225"
+        transition:name={`post-cover-${post.slug}`}
       />
     </a>
   )}
   <div class="p-5">
-    <h3 class="font-heading text-lg font-bold leading-snug">
+    <h3 class="font-heading text-lg font-bold leading-snug" transition:name={`post-title-${post.slug}`}>
       <a href={`/${post.slug}`} class="hover:text-blue-600 dark:hover:text-blue-400">
         {post.title}
       </a>

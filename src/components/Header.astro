@@ -15,7 +15,7 @@ const navItems = publication.preferences?.navbarItems ?? [];
 const hasDarkMode = true;
 ---
 
-<header class="sticky top-0 z-40 border-b border-slate-200/80 bg-white/80 backdrop-blur-lg dark:border-slate-800/80 dark:bg-neutral-950/80">
+<header transition:persist class="sticky top-0 z-40 border-b border-slate-200/80 bg-white/80 backdrop-blur-lg dark:border-slate-800/80 dark:bg-neutral-950/80">
   <Container class="flex h-16 items-center justify-between">
     <!-- Logo -->
     <PublicationLogo publication={publication} size="lg" />
@@ -97,56 +97,58 @@ const hasDarkMode = true;
     </div>
   </Container>
 
-  <!-- Mobile menu overlay -->
-  <div
-    id="mobile-menu"
-    class="fixed inset-0 z-50 hidden"
-    role="dialog"
-    aria-modal="true"
-    aria-label="Navigation menu"
-  >
-    <!-- Backdrop -->
-    <div id="mobile-menu-backdrop" class="fixed inset-0 bg-black/50 backdrop-blur-sm"></div>
-
-    <!-- Sidebar -->
-    <nav class="fixed inset-y-0 left-0 w-72 overflow-y-auto bg-white p-6 shadow-xl dark:bg-slate-900">
-      <div class="mb-8 flex items-center justify-between">
-        <PublicationLogo publication={publication} size="sm" />
-        <button
-          type="button"
-          id="mobile-menu-close"
-          class="rounded-full p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
-          aria-label="Close menu"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M18 6 6 18" />
-            <path d="m6 6 12 12" />
-          </svg>
-        </button>
-      </div>
-
-      <ul class="space-y-1">
-        {navItems.map((item) => (
-          <li>
-            <a
-              href={item.url}
-              class:list={[
-                'block rounded-md px-3 py-2.5 text-sm font-medium transition-colors hover:bg-slate-100 dark:hover:bg-slate-800',
-                currentMenuId === item.id
-                  ? 'bg-slate-100 text-blue-600 dark:bg-slate-800 dark:text-blue-400'
-                  : 'text-slate-700 dark:text-slate-300',
-              ]}
-            >
-              {item.label}
-            </a>
-          </li>
-        ))}
-      </ul>
-    </nav>
-  </div>
 </header>
 
+<!-- Mobile menu overlay (outside header to avoid backdrop-filter containing block) -->
+<div
+  id="mobile-menu"
+  class="fixed inset-0 z-50 hidden"
+  role="dialog"
+  aria-modal="true"
+  aria-label="Navigation menu"
+>
+  <!-- Backdrop -->
+  <div id="mobile-menu-backdrop" class="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 opacity-0"></div>
+
+  <!-- Sidebar -->
+  <nav class="fixed inset-y-0 right-0 w-72 overflow-y-auto bg-white p-6 shadow-xl transition-transform duration-300 translate-x-full dark:bg-slate-900">
+    <div class="mb-8 flex items-center justify-between">
+      <PublicationLogo publication={publication} size="sm" />
+      <button
+        type="button"
+        id="mobile-menu-close"
+        class="rounded-full p-2 text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+        aria-label="Close menu"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 6 6 18" />
+          <path d="m6 6 12 12" />
+        </svg>
+      </button>
+    </div>
+
+    <ul class="space-y-1">
+      {navItems.map((item) => (
+        <li>
+          <a
+            href={item.url}
+            class:list={[
+              'block rounded-md px-3 py-2.5 text-sm font-medium transition-colors hover:bg-slate-100 dark:hover:bg-slate-800',
+              currentMenuId === item.id
+                ? 'bg-slate-100 text-blue-600 dark:bg-slate-800 dark:text-blue-400'
+                : 'text-slate-700 dark:text-slate-300',
+            ]}
+          >
+            {item.label}
+          </a>
+        </li>
+      ))}
+    </ul>
+  </nav>
+</div>
+
 <!-- Header client-side scripts (dark mode toggle + mobile menu) -->
+<!-- Header uses transition:persist so these listeners survive across navigations -->
 <script>
   // Dark mode toggle
   const themeToggle = document.getElementById('theme-toggle');
@@ -156,30 +158,52 @@ const hasDarkMode = true;
   });
 
   // Mobile menu
+  // Note: mobile-menu overlay is outside <header> (to avoid backdrop-filter containing block),
+  // so it gets swapped on VT navigation. Use live DOM queries instead of cached references.
   const mobileMenuBtn = document.getElementById('mobile-menu-btn');
-  const mobileMenu = document.getElementById('mobile-menu');
-  const mobileMenuClose = document.getElementById('mobile-menu-close');
-  const mobileMenuBackdrop = document.getElementById('mobile-menu-backdrop');
 
   function openMobileMenu() {
-    mobileMenu?.classList.remove('hidden');
+    const menu = document.getElementById('mobile-menu');
+    if (!menu) return;
+    menu.classList.remove('hidden');
+    // Trigger reflow so transitions apply
+    menu.offsetHeight;
+    menu.querySelector('#mobile-menu-backdrop')?.classList.add('opacity-100');
+    menu.querySelector('nav')?.classList.remove('translate-x-full');
     mobileMenuBtn?.setAttribute('aria-expanded', 'true');
     document.body.style.overflow = 'hidden';
   }
 
   function closeMobileMenu() {
-    mobileMenu?.classList.add('hidden');
+    const menu = document.getElementById('mobile-menu');
+    if (!menu) return;
+    menu.querySelector('#mobile-menu-backdrop')?.classList.remove('opacity-100');
+    menu.querySelector('nav')?.classList.add('translate-x-full');
     mobileMenuBtn?.setAttribute('aria-expanded', 'false');
     document.body.style.overflow = '';
+    // Wait for transition to finish before hiding
+    setTimeout(() => menu.classList.add('hidden'), 300);
   }
 
   mobileMenuBtn?.addEventListener('click', openMobileMenu);
-  mobileMenuClose?.addEventListener('click', closeMobileMenu);
-  mobileMenuBackdrop?.addEventListener('click', closeMobileMenu);
 
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !mobileMenu?.classList.contains('hidden')) {
+  // Event delegation for close button and backdrop (DOM elements get swapped on VT navigation)
+  document.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('#mobile-menu-close') || target.id === 'mobile-menu-backdrop') {
       closeMobileMenu();
     }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    const menu = document.getElementById('mobile-menu');
+    if (e.key === 'Escape' && menu && !menu.classList.contains('hidden')) {
+      closeMobileMenu();
+    }
+  });
+
+  // Close mobile menu on View Transition navigation
+  document.addEventListener('astro:before-swap', () => {
+    closeMobileMenu();
   });
 </script>

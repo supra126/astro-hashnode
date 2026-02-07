@@ -32,6 +32,7 @@ const siteTitle = publication.displayTitle || publication.title;
       <form
         id="newsletter-form"
         class="mt-8 flex flex-col gap-3 sm:flex-row sm:gap-0"
+        data-publication-id={publication.id}
       >
         <input
           type="email"
@@ -65,41 +66,46 @@ const siteTitle = publication.displayTitle || publication.title;
   </Container>
 </BaseLayout>
 
-<script define:vars={{ publicationId: publication?.id ?? '' }}>
-  const form = document.getElementById('newsletter-form');
-  const emailInput = document.getElementById('newsletter-email');
-  const message = document.getElementById('newsletter-message');
+<script>
+  document.addEventListener('astro:page-load', () => {
+    const form = document.getElementById('newsletter-form') as HTMLFormElement | null;
+    if (!form) return;
 
-  form?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = emailInput.value;
-    message.classList.remove('hidden', 'text-green-600', 'text-red-600');
+    const publicationId = form.dataset.publicationId || '';
+    const emailInput = document.getElementById('newsletter-email') as HTMLInputElement | null;
+    const message = document.getElementById('newsletter-message') as HTMLElement | null;
 
-    try {
-      const res = await fetch('https://gql.hashnode.com', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: `mutation SubscribeToNewsletter($input: SubscribeToNewsletterInput!) {
-            subscribeToNewsletter(input: $input) { status }
-          }`,
-          variables: {
-            input: { publicationId, email },
-          },
-        }),
-      });
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = emailInput?.value;
+      message?.classList.remove('hidden', 'text-green-600', 'text-red-600');
 
-      const data = await res.json();
-      if (data.errors) {
-        throw new Error(data.errors[0]?.message || 'Subscription failed');
+      try {
+        const res = await fetch('https://gql.hashnode.com', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: `mutation SubscribeToNewsletter($input: SubscribeToNewsletterInput!) {
+              subscribeToNewsletter(input: $input) { status }
+            }`,
+            variables: {
+              input: { publicationId, email },
+            },
+          }),
+        });
+
+        const data = await res.json();
+        if (data.errors) {
+          throw new Error(data.errors[0]?.message || 'Subscription failed');
+        }
+
+        message!.textContent = 'You have been subscribed successfully!';
+        message!.classList.add('text-green-600');
+        if (emailInput) emailInput.value = '';
+      } catch (err) {
+        message!.textContent = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+        message!.classList.add('text-red-600');
       }
-
-      message.textContent = 'You have been subscribed successfully!';
-      message.classList.add('text-green-600');
-      emailInput.value = '';
-    } catch (err) {
-      message.textContent = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
-      message.classList.add('text-red-600');
-    }
+    });
   });
 </script>
