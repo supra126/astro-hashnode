@@ -7,13 +7,6 @@ export const GET: APIRoute = async ({ site }) => {
   const robotsTxt = `User-agent: *
 Allow: /
 
-# Google adsbot ignores robots.txt unless specifically named!
-User-agent: AdsBot-Google
-Allow: /
-
-User-agent: GPTBot
-Disallow: /
-
 Sitemap: ${sitemapUrl}`;
 
   return new Response(robotsTxt, {

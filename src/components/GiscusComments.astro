@@ -9,24 +9,43 @@ const categoryId = import.meta.env.PUBLIC_GISCUS_CATEGORY_ID;
 
 <section class="border-t border-slate-200 pt-10 dark:border-slate-800" id="comments">
   <div class="giscus"></div>
-  <script
-    is:inline
-    src="https://giscus.app/client.js"
-    data-repo={repo}
-    data-repo-id={repoId}
-    data-category={category}
-    data-category-id={categoryId}
-    data-mapping="pathname"
-    data-strict="0"
-    data-reactions-enabled="1"
-    data-emit-metadata="0"
-    data-input-position="top"
-    data-theme="light"
-    data-lang={SITE_LANG}
-    crossorigin="anonymous"
-    async
-  ></script>
 </section>
+
+<script
+  is:inline
+  data-giscus-repo={repo}
+  data-giscus-repo-id={repoId}
+  data-giscus-category={category}
+  data-giscus-category-id={categoryId}
+  data-giscus-lang={SITE_LANG}
+>
+  // Load Giscus into the .giscus container.
+  // Works on initial page load AND after View Transition (SPA) navigations.
+  function loadGiscus() {
+    var container = document.querySelector('.giscus');
+    if (!container || container.querySelector('iframe')) return;
+
+    var self = document.currentScript || document.querySelector('script[data-giscus-repo]');
+    var s = document.createElement('script');
+    s.src = 'https://giscus.app/client.js';
+    s.setAttribute('data-repo', self.getAttribute('data-giscus-repo'));
+    s.setAttribute('data-repo-id', self.getAttribute('data-giscus-repo-id'));
+    s.setAttribute('data-category', self.getAttribute('data-giscus-category'));
+    s.setAttribute('data-category-id', self.getAttribute('data-giscus-category-id'));
+    s.setAttribute('data-mapping', 'pathname');
+    s.setAttribute('data-strict', '0');
+    s.setAttribute('data-reactions-enabled', '1');
+    s.setAttribute('data-emit-metadata', '0');
+    s.setAttribute('data-input-position', 'top');
+    s.setAttribute('data-theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+    s.setAttribute('data-lang', self.getAttribute('data-giscus-lang'));
+    s.crossOrigin = 'anonymous';
+    s.async = true;
+    container.appendChild(s);
+  }
+
+  loadGiscus();
+</script>
 
 <script is:inline>
   // Guard: only set up global observers once (they survive View Transition navigations)

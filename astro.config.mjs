@@ -11,8 +11,8 @@ export default defineConfig({
   site: siteUrl,
   output: 'static',
   prefetch: {
-    prefetchAll: false,
-    defaultStrategy: 'hover',
+    prefetchAll: true,
+    defaultStrategy: 'viewport',
   },
   vite: {
     plugins: [tailwindcss()],

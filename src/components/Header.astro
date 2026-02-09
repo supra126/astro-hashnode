@@ -148,20 +148,8 @@ const hasDarkMode = true;
 </div>
 
 <!-- Header client-side scripts (dark mode toggle + mobile menu) -->
-<!-- Header uses transition:persist so these listeners survive across navigations -->
+<!-- Uses event delegation on document so listeners survive View Transition swaps -->
 <script>
-  // Dark mode toggle
-  const themeToggle = document.getElementById('theme-toggle');
-  themeToggle?.addEventListener('click', () => {
-    const isDark = document.documentElement.classList.toggle('dark');
-    localStorage.setItem('theme', isDark ? 'dark' : 'light');
-  });
-
-  // Mobile menu
-  // Note: mobile-menu overlay is outside <header> (to avoid backdrop-filter containing block),
-  // so it gets swapped on VT navigation. Use live DOM queries instead of cached references.
-  const mobileMenuBtn = document.getElementById('mobile-menu-btn');
-
   function openMobileMenu() {
     const menu = document.getElementById('mobile-menu');
     if (!menu) return;
@@ -170,7 +158,7 @@ const hasDarkMode = true;
     menu.offsetHeight;
     menu.querySelector('#mobile-menu-backdrop')?.classList.add('opacity-100');
     menu.querySelector('nav')?.classList.remove('translate-x-full');
-    mobileMenuBtn?.setAttribute('aria-expanded', 'true');
+    document.getElementById('mobile-menu-btn')?.setAttribute('aria-expanded', 'true');
     document.body.style.overflow = 'hidden';
   }
 
@@ -179,26 +167,39 @@ const hasDarkMode = true;
     if (!menu) return;
     menu.querySelector('#mobile-menu-backdrop')?.classList.remove('opacity-100');
     menu.querySelector('nav')?.classList.add('translate-x-full');
-    mobileMenuBtn?.setAttribute('aria-expanded', 'false');
+    document.getElementById('mobile-menu-btn')?.setAttribute('aria-expanded', 'false');
     document.body.style.overflow = '';
     // Wait for transition to finish before hiding
     setTimeout(() => menu.classList.add('hidden'), 300);
   }
 
-  mobileMenuBtn?.addEventListener('click', openMobileMenu);
-
-  // Event delegation for close button and backdrop (DOM elements get swapped on VT navigation)
+  // Event delegation: all click handlers on document survive View Transition swaps
   document.addEventListener('click', (e) => {
     const target = e.target as HTMLElement;
+
+    // Dark mode toggle
+    if (target.closest('#theme-toggle')) {
+      const isDark = document.documentElement.classList.toggle('dark');
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    }
+
+    // Mobile menu open
+    if (target.closest('#mobile-menu-btn')) {
+      openMobileMenu();
+    }
+
+    // Mobile menu close (close button or backdrop)
     if (target.closest('#mobile-menu-close') || target.id === 'mobile-menu-backdrop') {
       closeMobileMenu();
     }
   });
 
   document.addEventListener('keydown', (e) => {
-    const menu = document.getElementById('mobile-menu');
-    if (e.key === 'Escape' && menu && !menu.classList.contains('hidden')) {
-      closeMobileMenu();
+    if (e.key === 'Escape') {
+      const menu = document.getElementById('mobile-menu');
+      if (menu && !menu.classList.contains('hidden')) {
+        closeMobileMenu();
+      }
     }
   });
 

@@ -159,3 +159,10 @@ html.dark {
 .prose :is(h1, h2, h3, h4, h5, h6) {
   font-family: var(--font-heading);
 }
+
+/* Faster View Transitions */
+::view-transition-group(*),
+::view-transition-old(*),
+::view-transition-new(*) {
+  animation-duration: 120ms;
+}
