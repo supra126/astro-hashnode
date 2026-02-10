@@ -10,8 +10,13 @@ interface ImportMetaEnv {
   readonly PUBLIC_SITE_URL?: string;
   readonly PUBLIC_GISCUS_CATEGORY?: string;
   readonly PUBLIC_GISCUS_CATEGORY_ID?: string;
+  readonly PUBLIC_EASTER_EGGS?: string;
 }
 
 interface ImportMeta {
   readonly env: ImportMetaEnv;
+}
+
+interface Window {
+  __triggerMatrixRain?: (permanent?: boolean) => void;
 }

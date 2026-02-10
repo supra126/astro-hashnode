@@ -173,6 +173,65 @@ const hasDarkMode = true;
     setTimeout(() => menu.classList.add('hidden'), 300);
   }
 
+  // --- Logo Easter Eggs ---
+  // Uses capture phase to intercept BEFORE Astro's View Transition router
+  let logoClickCount = 0;
+  let logoClickTimer = 0;
+  let logoLongPressTimer = 0;
+  let logoLongPressed = false;
+
+  // Long-press Logo (1.5s) → permanent Matrix Rain
+  function onLogoPointerDown(e: PointerEvent) {
+    const target = e.target as HTMLElement;
+    if (!target.closest('header a[href="/"]')) return;
+    logoLongPressed = false;
+    logoLongPressTimer = window.setTimeout(() => {
+      logoLongPressed = true;
+      window.__triggerMatrixRain?.(true);
+    }, 1500);
+  }
+
+  function onLogoPointerUp() {
+    clearTimeout(logoLongPressTimer);
+  }
+
+  document.addEventListener('pointerdown', onLogoPointerDown, true);
+  document.addEventListener('pointerup', onLogoPointerUp, true);
+  document.addEventListener('pointercancel', onLogoPointerUp, true);
+
+  // 5-click Logo → timed Matrix Rain
+  document.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement;
+    const logoLink = target.closest('header a[href="/"]');
+    if (!logoLink) return;
+
+    // Skip click event if long-press already triggered
+    if (logoLongPressed) {
+      e.preventDefault();
+      e.stopPropagation();
+      logoLongPressed = false;
+      logoClickCount = 0;
+      return;
+    }
+
+    logoClickCount++;
+    clearTimeout(logoClickTimer);
+    logoClickTimer = window.setTimeout(() => { logoClickCount = 0; }, 2000);
+
+    if (logoClickCount >= 5) {
+      e.preventDefault();
+      e.stopPropagation();
+      logoClickCount = 0;
+      clearTimeout(logoClickTimer);
+      window.__triggerMatrixRain?.();
+    } else if (logoClickCount > 1 && location.pathname === '/') {
+      // On home page, prevent Astro navigation on intermediate clicks (2-4)
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    // Click 1: let through normally (navigates to home if on other pages)
+  }, true); // capture phase — fires before Astro's router
+
   // Event delegation: all click handlers on document survive View Transition swaps
   document.addEventListener('click', (e) => {
     const target = e.target as HTMLElement;
@@ -194,12 +253,58 @@ const hasDarkMode = true;
     }
   });
 
+  // --- Konami Code Easter Egg ---
+  // ↑↑↓↓←→←→BA = timed rain, ↑↑↓↓←→←→BA + Enter = permanent rain
+  const KONAMI = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
+  let konamiIndex = 0;
+  let konamiTimer = 0;
+  let konamiComplete = false;
+  let konamiCompleteTimer = 0;
+
   document.addEventListener('keydown', (e) => {
+    // Escape → close mobile menu
     if (e.key === 'Escape') {
       const menu = document.getElementById('mobile-menu');
       if (menu && !menu.classList.contains('hidden')) {
         closeMobileMenu();
       }
+    }
+
+    // Konami Code detection — skip when typing in inputs
+    const tag = (e.target as HTMLElement).tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement).isContentEditable) return;
+
+    // After sequence complete, check for Enter (permanent) or fire timed
+    if (konamiComplete) {
+      konamiComplete = false;
+      clearTimeout(konamiCompleteTimer);
+      if (e.key === 'Enter') {
+        window.__triggerMatrixRain?.(true);
+      } else {
+        window.__triggerMatrixRain?.();
+      }
+      return;
+    }
+
+    clearTimeout(konamiTimer);
+    konamiTimer = window.setTimeout(() => { konamiIndex = 0; }, 5000);
+
+    if (e.key === KONAMI[konamiIndex]) {
+      konamiIndex++;
+      if (konamiIndex === KONAMI.length) {
+        konamiIndex = 0;
+        clearTimeout(konamiTimer);
+        // Wait briefly for optional Enter key
+        konamiComplete = true;
+        konamiCompleteTimer = window.setTimeout(() => {
+          if (konamiComplete) {
+            konamiComplete = false;
+            window.__triggerMatrixRain?.();
+          }
+        }, 800);
+      }
+    } else {
+      konamiIndex = 0;
     }
   });
 

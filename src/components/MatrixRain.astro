@@ -1,0 +1,129 @@
+<canvas
+  id="matrix-rain-canvas"
+  style="display:none; position:fixed; inset:0; z-index:9999; pointer-events:none;"
+></canvas>
+
+<script>
+  const CHARS = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789<>/{}();=+-*&|';
+  const FONT_SIZE = 16;
+  const DURATION = 6000;
+  const FADE_START = 4000;
+
+  let canvas: HTMLCanvasElement | null = null;
+  let ctx: CanvasRenderingContext2D | null = null;
+  let columns = 0;
+  let drops: number[] = [];
+  let animId = 0;
+  let startTime = 0;
+  let active = false;
+  let permanent = false;
+
+  function acquireCanvas(): boolean {
+    canvas = document.getElementById('matrix-rain-canvas') as HTMLCanvasElement | null;
+    if (!canvas) return false;
+    ctx = canvas.getContext('2d');
+    if (!ctx) return false;
+    // Re-bind click-to-dismiss on the fresh canvas element
+    canvas.onclick = () => { if (active) stop(); };
+    return true;
+  }
+
+  function resize() {
+    if (!canvas) return;
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    const newCols = Math.floor(canvas.width / FONT_SIZE);
+    if (newCols > columns) {
+      for (let i = columns; i < newCols; i++) {
+        drops[i] = Math.random() * -50;
+      }
+    }
+    columns = newCols;
+    drops.length = columns;
+  }
+
+  function draw() {
+    if (!canvas || !ctx) return;
+
+    // Timed mode: auto-fade and stop
+    if (!permanent) {
+      const elapsed = Date.now() - startTime;
+      if (elapsed >= DURATION) {
+        stop();
+        return;
+      }
+      if (elapsed >= FADE_START) {
+        const progress = (elapsed - FADE_START) / (DURATION - FADE_START);
+        canvas.style.opacity = String(1 - progress);
+      }
+    }
+
+    // Semi-transparent black overlay for trail effect
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.font = `${FONT_SIZE}px monospace`;
+
+    for (let i = 0; i < columns; i++) {
+      const char = CHARS[Math.floor(Math.random() * CHARS.length)];
+      const x = i * FONT_SIZE;
+      const y = drops[i] * FONT_SIZE;
+
+      // 5% chance for bright white head character
+      ctx.fillStyle = Math.random() < 0.05 ? '#fff' : '#0f0';
+      ctx.fillText(char, x, y);
+
+      // Reset drop when it falls off screen (with randomness)
+      if (y > canvas.height && Math.random() > 0.975) {
+        drops[i] = 0;
+      }
+      drops[i]++;
+    }
+
+    animId = requestAnimationFrame(draw);
+  }
+
+  function stop() {
+    cancelAnimationFrame(animId);
+    active = false;
+    permanent = false;
+    if (canvas) {
+      canvas.style.display = 'none';
+      canvas.style.opacity = '1';
+      canvas.style.pointerEvents = 'none';
+    }
+    if (ctx && canvas) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  }
+
+  function startRain(isPermanent = false) {
+    if (active) return;
+    // Always re-acquire canvas (it may have been replaced by View Transition)
+    if (!acquireCanvas()) return;
+    active = true;
+    permanent = isPermanent;
+    columns = 0;
+    drops = [];
+    resize();
+    // Fill black background initially
+    ctx!.fillStyle = '#000';
+    ctx!.fillRect(0, 0, canvas!.width, canvas!.height);
+    // Randomize starting drop positions
+    for (let i = 0; i < columns; i++) {
+      drops[i] = Math.random() * -50;
+    }
+    canvas!.style.display = 'block';
+    canvas!.style.pointerEvents = 'auto';
+    canvas!.style.opacity = '1';
+    startTime = Date.now();
+    animId = requestAnimationFrame(draw);
+  }
+
+  window.addEventListener('resize', () => {
+    if (active) resize();
+  });
+
+  // Expose global trigger
+  window.__triggerMatrixRain = startRain;
+</script>

@@ -4,6 +4,7 @@ import Container from '../components/Container.astro';
 import { getPublicationByHost } from '../lib/api';
 
 const { publication } = await getPublicationByHost();
+const easterEggs = import.meta.env.PUBLIC_EASTER_EGGS === 'true';
 ---
 
 <BaseLayout
@@ -27,5 +28,560 @@ const { publication } = await getPublicationByHost();
         Back to Home
       </a>
     </div>
+
+    {easterEggs && (
+      <div class="mx-auto mt-16 max-w-lg text-center">
+        <p id="flappy-prompt" class="mb-4 text-sm text-slate-500 dark:text-slate-400">
+          Press <kbd class="rounded border border-slate-300 bg-slate-100 px-1.5 py-0.5 font-mono text-xs dark:border-slate-600 dark:bg-slate-800">Space</kbd> to play
+        </p>
+        <canvas
+          id="flappy-canvas"
+          class="mx-auto rounded-xl border-2 border-slate-200 dark:border-slate-700"
+        ></canvas>
+        <p class="mt-3 text-xs text-slate-400 dark:text-slate-500">
+          Tap or press Space to flap
+        </p>
+      </div>
+    )}
   </Container>
 </BaseLayout>
+
+{easterEggs && (
+<script>
+  function initFlappy() {
+    const canvas = document.getElementById('flappy-canvas') as HTMLCanvasElement | null;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d')!;
+
+    // Virtual coordinate system
+    const VW = 480;
+    const VH = 640;
+
+    // Sizing
+    const container = canvas.parentElement!;
+    function resize() {
+      const maxW = Math.min(container.clientWidth - 32, 480);
+      const scale = maxW / VW;
+      canvas!.width = Math.round(VW * scale);
+      canvas!.height = Math.round(VH * scale);
+    }
+    resize();
+
+    // Game constants
+    const GRAVITY = 0.5;
+    const FLAP = -8;
+    const PIPE_WIDTH = 60;
+    const PIPE_GAP = 160;
+    const PIPE_SPEED = 3;
+    const PIPE_SPAWN = 180;
+    const BIRD_X = 60;
+    const BIRD_SIZE = 28;
+
+    const LABELS = [
+      '404', '500', '503', '401', 'undefined', 'null', 'NaN',
+      'TypeError', 'ENOENT', 'SIGKILL', 'panic()', 'rm -rf',
+      'CORS', 'git rebase', 'regex', 'node_modules',
+    ];
+
+    const IDLE_MESSAGES = [
+      ['Press Space', 'to mass-fail'],
+      ['Your bugs', 'miss you'],
+      ["It's not a bug", "it's your career"],
+      ['你的 bug', '想你了'],
+      ['本番環境へ', 'ようこそ'],
+      ['스페이스를 눌러', '버그 생성'],
+      ['Appuie pour', 'tout casser'],
+      ['Pulsa Space', 'para sufrir'],
+    ];
+
+    // [threshold, messages[]]  — pick from highest matching threshold
+    const ROASTS: [number, string[]][] = [
+      [0, [
+        'Did you even try?',
+        '你有在按嗎？',
+        '本当にやる気ある？',
+        '¿Eso fue un intento?',
+      ]],
+      [1, [
+        "Stack Overflow can't save you here",
+        '連 ChatGPT 都救不了你',
+        'AI も助けられない',
+        '스택오버플로우도 못 살림',
+      ]],
+      [4, [
+        'Almost mass-produced average',
+        '你的程式碼大概也這麼短命',
+        'Funciona en mi máquina',
+        '平凡以下、量産型バグ',
+      ]],
+      [8, [
+        'Your code has the same survival rate',
+        '不錯，但還是會被裁員',
+        'Warum funktioniert das nicht?',
+        '나쁘진 않은데… 해고는 확정',
+      ]],
+      [15, [
+        'Not bad. Still getting laid off though',
+        'まあまあ。でもリストラ対象です',
+        "C'est pas un bug, c'est une feature",
+        '還行吧，履歷還是要更新',
+      ]],
+      [25, [
+        'OK we get it, you mass-apply on LinkedIn too',
+        '好啦好啦，去刷 LeetCode 啦',
+        'Compila, mas não roda',
+        '이 실력이면 이력서 뿌려도 되겠다',
+      ]],
+    ];
+
+    const DEATH_SUBS = [
+      'git blame: you',
+      'Segfault in your reflexes',
+      'Have you tried turning yourself off?',
+      'This is why we have code review',
+      'rm -rf hope',
+      'console.log("why")',
+      '已讀不回的 bug',
+      '本番環境でテスト中',
+      '야근 확정',
+      'Funciona en mi máquina',
+      "C'est la mass-vie du dev",
+      'sudo rm -rf career',
+      '又是 undefined 的一天',
+      'デプロイは金曜日に',
+      '커밋 메시지: 되겠지…',
+      'Compila, mas não roda',
+    ];
+
+    // --- Fake toast notifications ---
+    const TOASTS = [
+      '🔴 Production is down',
+      'Slack: Your PR got rejected',
+      'AWS: Your bill is $14,328.07',
+      'LinkedIn: 3 recruiters viewed your profile',
+      'GitHub Copilot has left the chat',
+      'JIRA: 8 tickets assigned to you',
+      '老闆已加入群組',
+      'npm: found 42 vulnerabilities',
+      'Vercel: Build failed',
+      '本番サーバーが落ちました',
+      '배포 실패: 롤백 중...',
+      'Docker: no space left on device',
+      'git push --force: SUCCESS 😈',
+      'HR wants to schedule a quick chat',
+      'Slack: @here 有人在嗎',
+      "cron: your backup hasn't run in 47 days",
+    ];
+
+    // --- Score display trolling ---
+    const SCORE_TROLLS: Record<number, string> = {
+      3: 'Math.PI',
+      7: '0x07',
+      10: 'NaN',
+      13: '-1',
+      16: '0x10',
+      20: 'undefined',
+      23: '0b10111',
+      42: 'The Answer',
+    };
+
+    // --- Bird face expressions ---
+    const BIRD_DEFAULT = '</>';
+    const BIRD_HAPPY = '^_^';
+    const BIRD_PANIC = ['D:', ':(', 'x_x', '?!', '>_<'];
+    const BIRD_GLITCH = ['undefined', 'NaN', 'null', '???', 'bug', ':skull:'];
+
+    function pick<T>(arr: T[]): T {
+      return arr[Math.floor(Math.random() * arr.length)];
+    }
+
+    function getRoast(s: number): string {
+      let msg = ROASTS[0][1];
+      for (const [threshold, msgs] of ROASTS) {
+        if (s >= threshold) msg = msgs;
+      }
+      return pick(msg);
+    }
+
+    // State
+    type State = 'idle' | 'playing' | 'dead';
+    let state: State = 'idle';
+    let idleMsg = pick(IDLE_MESSAGES);
+    let deathRoast = '';
+    let deathSub = '';
+
+    // Toast state
+    let toastText = '';
+    let toastTimer = 0;       // frame countdown for display
+    let toastCooldown = 0;    // frames until next toast eligible
+    let nextToastAt = 3;      // score threshold for next toast
+
+    // Bird face state
+    let birdFace = BIRD_DEFAULT;
+    let birdFaceTimer = 0;
+
+    // Score troll state
+    let scoreTrollText = '';
+    let scoreTrollTimer = 0;
+
+    let birdY = VH / 2;
+    let birdVel = 0;
+    let birdAngle = 0;
+    let pipes: { x: number; topH: number; label: string; scored: boolean }[] = [];
+    let score = 0;
+    let frameCount = 0;
+    let animId = 0;
+    let deadTimer = 0;
+
+    function isDark() {
+      return document.documentElement.classList.contains('dark');
+    }
+
+    function spawnPipe() {
+      const minTop = 80;
+      const maxTop = VH - PIPE_GAP - 80;
+      const topH = minTop + Math.random() * (maxTop - minTop);
+      const label = LABELS[Math.floor(Math.random() * LABELS.length)];
+      pipes.push({ x: VW + 20, topH, label, scored: false });
+    }
+
+    function resetGame() {
+      birdY = VH / 2;
+      birdVel = 0;
+      birdAngle = 0;
+      pipes = [];
+      score = 0;
+      frameCount = 0;
+      deadTimer = 0;
+      toastText = '';
+      toastTimer = 0;
+      toastCooldown = 0;
+      nextToastAt = 3;
+      birdFace = BIRD_DEFAULT;
+      birdFaceTimer = 0;
+      scoreTrollText = '';
+      scoreTrollTimer = 0;
+    }
+
+    function flap() {
+      if (state === 'idle') {
+        state = 'playing';
+        resetGame();
+        birdVel = FLAP;
+      } else if (state === 'playing') {
+        birdVel = FLAP;
+      } else if (state === 'dead') {
+        if (Date.now() - deadTimer > 500) {
+          state = 'idle';
+          idleMsg = pick(IDLE_MESSAGES);
+        }
+      }
+    }
+
+    function update() {
+      if (state !== 'playing') return;
+
+      birdVel += GRAVITY;
+      birdY += birdVel;
+      birdAngle = Math.min(Math.max(birdVel * 3, -30), 70);
+
+      // Spawn pipes
+      frameCount++;
+      if (frameCount % PIPE_SPAWN === 0) {
+        spawnPipe();
+      }
+
+      // Tick down timers
+      if (toastTimer > 0) toastTimer--;
+      if (toastCooldown > 0) toastCooldown--;
+      if (birdFaceTimer > 0) {
+        birdFaceTimer--;
+        if (birdFaceTimer === 0) birdFace = BIRD_DEFAULT;
+      }
+      if (scoreTrollTimer > 0) scoreTrollTimer--;
+
+      // Move pipes
+      for (const p of pipes) {
+        p.x -= PIPE_SPEED;
+        // Score
+        if (!p.scored && p.x + PIPE_WIDTH < BIRD_X) {
+          p.scored = true;
+          score++;
+
+          // Bird happy face on score
+          birdFace = BIRD_HAPPY;
+          birdFaceTimer = 20;
+
+          // Score troll: show fake text briefly
+          if (SCORE_TROLLS[score]) {
+            scoreTrollText = SCORE_TROLLS[score];
+            scoreTrollTimer = 90; // ~1.5 seconds
+          }
+
+          // Toast notification at milestones
+          if (score >= nextToastAt && toastCooldown === 0) {
+            toastText = pick(TOASTS);
+            toastTimer = 150; // ~2.5 seconds
+            toastCooldown = 180; // ~3 seconds cooldown
+            nextToastAt = score + 2 + Math.floor(Math.random() * 3);
+          }
+        }
+      }
+      // Remove off-screen pipes
+      pipes = pipes.filter(p => p.x + PIPE_WIDTH > -20);
+
+      // Collision: ground / ceiling
+      if (birdY - BIRD_SIZE / 2 < 0 || birdY + BIRD_SIZE / 2 > VH) {
+        die();
+        return;
+      }
+
+      // Collision: pipes + panic face when close
+      let nearPipe = false;
+      for (const p of pipes) {
+        const inPipeX = BIRD_X + BIRD_SIZE / 2 > p.x && BIRD_X - BIRD_SIZE / 2 < p.x + PIPE_WIDTH;
+        if (inPipeX) {
+          if (birdY - BIRD_SIZE / 2 < p.topH || birdY + BIRD_SIZE / 2 > p.topH + PIPE_GAP) {
+            birdFace = pick(BIRD_PANIC);
+            die();
+            return;
+          }
+        }
+        // Panic when approaching pipe (within 40px)
+        if (BIRD_X + BIRD_SIZE / 2 + 40 > p.x && BIRD_X - BIRD_SIZE / 2 < p.x + PIPE_WIDTH) {
+          nearPipe = true;
+        }
+      }
+      // Near-pipe panic (only if not already showing a timed face)
+      if (nearPipe && birdFaceTimer === 0) {
+        birdFace = pick(BIRD_PANIC);
+      } else if (!nearPipe && birdFaceTimer === 0) {
+        birdFace = BIRD_DEFAULT;
+      }
+
+      // High score glitch: random face flicker at 10+
+      if (score >= 10 && birdFaceTimer === 0 && Math.random() < 0.008) {
+        birdFace = pick(BIRD_GLITCH);
+        birdFaceTimer = 15;
+      }
+    }
+
+    function die() {
+      state = 'dead';
+      deadTimer = Date.now();
+      deathRoast = getRoast(score);
+      deathSub = pick(DEATH_SUBS);
+    }
+
+    function render() {
+      const scale = canvas!.width / VW;
+      ctx.save();
+      ctx.scale(scale, scale);
+
+      const dark = isDark();
+
+      // Background
+      ctx.fillStyle = dark ? '#0a0a0a' : '#f8fafc';
+      ctx.fillRect(0, 0, VW, VH);
+
+      // Pipes
+      for (const p of pipes) {
+        // Pipe body
+        ctx.fillStyle = dark ? '#dc2626' : '#ef4444';
+        // Top pipe
+        ctx.fillRect(p.x, 0, PIPE_WIDTH, p.topH);
+        // Bottom pipe
+        ctx.fillRect(p.x, p.topH + PIPE_GAP, PIPE_WIDTH, VH - p.topH - PIPE_GAP);
+
+        // Pipe caps
+        ctx.fillStyle = dark ? '#b91c1c' : '#dc2626';
+        const capW = PIPE_WIDTH + 10;
+        const capH = 16;
+        ctx.fillRect(p.x - 5, p.topH - capH, capW, capH);
+        ctx.fillRect(p.x - 5, p.topH + PIPE_GAP, capW, capH);
+
+        // Labels on pipes
+        ctx.fillStyle = dark ? '#fca5a5' : '#fff';
+        ctx.font = 'bold 14px monospace';
+        ctx.textAlign = 'center';
+        // Top pipe label
+        const topLabelY = Math.min(p.topH - capH - 8, p.topH - 24);
+        if (topLabelY > 16) {
+          ctx.fillText(p.label, p.x + PIPE_WIDTH / 2, topLabelY);
+        }
+        // Bottom pipe label
+        ctx.fillText(p.label, p.x + PIPE_WIDTH / 2, p.topH + PIPE_GAP + capH + 20);
+      }
+
+      // Bird with dynamic face
+      ctx.save();
+      ctx.translate(BIRD_X, birdY);
+      ctx.rotate((birdAngle * Math.PI) / 180);
+      const faceSize = birdFace.length > 3 ? BIRD_SIZE - 8 : BIRD_SIZE;
+      ctx.font = `bold ${faceSize}px monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = birdFace === BIRD_HAPPY
+        ? (dark ? '#34d399' : '#10b981')
+        : birdFace !== BIRD_DEFAULT
+          ? (dark ? '#f87171' : '#ef4444')
+          : (dark ? '#60a5fa' : '#2563eb');
+      ctx.fillText(birdFace, 0, 0);
+      ctx.restore();
+
+      // Score (with troll display)
+      if (state === 'playing' || state === 'dead') {
+        const displayScore = (scoreTrollTimer > 0 && state === 'playing')
+          ? scoreTrollText
+          : String(score);
+        ctx.font = 'bold 48px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = dark ? '#e2e8f0' : '#1e293b';
+        ctx.strokeStyle = dark ? '#0a0a0a' : '#f8fafc';
+        ctx.lineWidth = 4;
+        // Glitch color when trolling
+        if (scoreTrollTimer > 0 && state === 'playing') {
+          ctx.fillStyle = '#ef4444';
+        }
+        ctx.strokeText(displayScore, VW / 2, 60);
+        ctx.fillText(displayScore, VW / 2, 60);
+      }
+
+      // Toast notification
+      if (toastTimer > 0 && state === 'playing') {
+        const toastAlpha = toastTimer < 30 ? toastTimer / 30 : (toastTimer > 120 ? (150 - toastTimer) / 30 : 1);
+        ctx.globalAlpha = toastAlpha;
+        // Toast background
+        ctx.fillStyle = dark ? '#1e293b' : '#fff';
+        const toastW = 320;
+        const toastH = 36;
+        const toastX = (VW - toastW) / 2;
+        const toastY = 90;
+        ctx.beginPath();
+        ctx.roundRect(toastX, toastY, toastW, toastH, 8);
+        ctx.fill();
+        // Toast border
+        ctx.strokeStyle = dark ? '#334155' : '#e2e8f0';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        // Toast text
+        ctx.font = '13px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = dark ? '#e2e8f0' : '#1e293b';
+        ctx.fillText(toastText, VW / 2, toastY + 22);
+        ctx.globalAlpha = 1;
+      }
+
+      // Idle message
+      if (state === 'idle') {
+        ctx.font = 'bold 22px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = dark ? '#94a3b8' : '#64748b';
+        ctx.fillText(idleMsg[0], VW / 2, VH / 2 - 20);
+        ctx.fillText(idleMsg[1], VW / 2, VH / 2 + 14);
+
+        // Bobbing bird
+        const bob = Math.sin(Date.now() / 300) * 8;
+        ctx.font = `bold ${BIRD_SIZE}px monospace`;
+        ctx.fillStyle = dark ? '#60a5fa' : '#2563eb';
+        ctx.fillText('</>', BIRD_X, VH / 2 + 60 + bob);
+
+        // Credit
+        ctx.font = '13px monospace';
+        ctx.fillStyle = dark ? '#475569' : '#94a3b8';
+        ctx.fillText('© Supra — deployed with mass-bugs', VW / 2, VH - 30);
+      }
+
+      // Dead overlay
+      if (state === 'dead') {
+        ctx.fillStyle = dark ? 'rgba(0,0,0,0.5)' : 'rgba(0,0,0,0.3)';
+        ctx.fillRect(0, 0, VW, VH);
+
+        // Score
+        ctx.font = 'bold 48px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#ef4444';
+        ctx.fillText(String(score), VW / 2, VH / 2 - 40);
+
+        // Roast
+        ctx.font = 'bold 18px monospace';
+        ctx.fillStyle = dark ? '#e2e8f0' : '#f8fafc';
+        ctx.fillText(deathRoast, VW / 2, VH / 2 + 8);
+
+        // Subtitle
+        ctx.font = '14px monospace';
+        ctx.fillStyle = dark ? '#64748b' : '#94a3b8';
+        ctx.fillText(deathSub, VW / 2, VH / 2 + 36);
+
+        // Retry hint
+        ctx.font = '14px monospace';
+        ctx.fillStyle = dark ? '#475569' : '#cbd5e1';
+        ctx.fillText('Tap to retry', VW / 2, VH / 2 + 68);
+      }
+
+      ctx.restore();
+    }
+
+    function loop() {
+      update();
+      render();
+      animId = requestAnimationFrame(loop);
+    }
+
+    // Input handlers
+    function onKey(e: KeyboardEvent) {
+      if (!document.getElementById('flappy-canvas')) {
+        document.removeEventListener('keydown', onKey);
+        return;
+      }
+      if (e.code === 'Space') {
+        e.preventDefault();
+        flap();
+      }
+    }
+
+    function getCanvasPos(e: MouseEvent | TouchEvent): { x: number; y: number } {
+      const rect = canvas!.getBoundingClientRect();
+      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+      const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+      const scale = VW / canvas!.width;
+      return {
+        x: (clientX - rect.left) * scale,
+        y: (clientY - rect.top) * scale,
+      };
+    }
+
+    function onClick(e: MouseEvent | TouchEvent) {
+      if (!document.getElementById('flappy-canvas')) {
+        canvas!.removeEventListener('click', onClick);
+        canvas!.removeEventListener('touchstart', onClick as any);
+        return;
+      }
+      e.preventDefault();
+
+      // Check if clicking credit link in idle state
+      if (state === 'idle') {
+        const pos = getCanvasPos(e);
+        if (pos.y > VH - 50 && pos.x > VW / 2 - 160 && pos.x < VW / 2 + 160) {
+          window.open('https://github.com/supra126', '_blank');
+          return;
+        }
+      }
+
+      flap();
+    }
+
+    document.addEventListener('keydown', onKey);
+    canvas.addEventListener('click', onClick);
+    canvas.addEventListener('touchstart', onClick as any, { passive: false });
+    window.addEventListener('resize', resize);
+
+    // Start loop
+    animId = requestAnimationFrame(loop);
+  }
+
+  // Run on initial load and on View Transition navigation
+  initFlappy();
+  document.addEventListener('astro:page-load', initFlappy);
+</script>
+)}
