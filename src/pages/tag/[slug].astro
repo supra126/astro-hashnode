@@ -11,7 +11,10 @@ export const getStaticPaths: GetStaticPaths = async () => {
 };
 
 const { slug } = Astro.params;
-const data = await getTagInitial(slug!, 20);
+if (!slug) {
+  return Astro.redirect('/404');
+}
+const data = await getTagInitial(slug, 20);
 const publication = data.publication;
 if (!publication?.posts) {
   return Astro.redirect('/404');

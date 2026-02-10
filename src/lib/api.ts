@@ -7,7 +7,6 @@ import {
   SlugPostsByPublicationQuery,
   PostsByPublicationQuery,
   MorePostsByPublicationQuery,
-  PostsWithTagsQuery,
   TagInitialQuery,
   TagPostsByPublicationQuery,
   SeriesPageInitialQuery,
@@ -81,32 +80,13 @@ export async function getMorePosts(first: number = 6, after?: string) {
   );
 }
 
-export async function getAllPostSlugs() {
+/** Cached result from fetchAllPostsWithTags — shared by getAllPostSlugs & getAllTagSlugs */
+let _cachedPostsWithTags: { slugs: string[]; tagSlugs: string[] } | null = null;
+
+async function fetchAllPostsWithTags() {
+  if (_cachedPostsWithTags) return _cachedPostsWithTags;
+
   const slugs: string[] = [];
-  let after: string | undefined;
-  let hasNextPage = true;
-
-  while (hasNextPage) {
-    const data = await gqlClient.request<{
-      publication: {
-        posts: {
-          edges: Array<{ node: { slug: string } }>;
-          pageInfo: { endCursor: string | null; hasNextPage: boolean };
-        };
-      };
-    }>(SlugPostsByPublicationQuery, { host, first: 50, after });
-
-    const { edges, pageInfo } = data.publication.posts;
-    slugs.push(...edges.map((e) => e.node.slug));
-
-    hasNextPage = pageInfo.hasNextPage;
-    after = pageInfo.endCursor ?? undefined;
-  }
-
-  return slugs;
-}
-
-export async function getAllTagSlugs() {
   const tagSlugs = new Set<string>();
   let after: string | undefined;
   let hasNextPage = true;
@@ -115,23 +95,37 @@ export async function getAllTagSlugs() {
     const data = await gqlClient.request<{
       publication: {
         posts: {
-          edges: Array<{ node: { slug: string; tags: Array<{ slug: string }> } }>;
+          edges: Array<{ node: { slug: string; tags?: Array<{ slug: string }> } }>;
           pageInfo: { endCursor: string | null; hasNextPage: boolean };
         };
       };
-    }>(PostsWithTagsQuery, { host, first: 50, after });
+    }>(SlugPostsByPublicationQuery, { host, first: 50, after });
 
-    for (const edge of data.publication.posts.edges) {
+    const { edges, pageInfo } = data.publication.posts;
+
+    for (const edge of edges) {
+      slugs.push(edge.node.slug);
       for (const tag of edge.node.tags ?? []) {
         tagSlugs.add(tag.slug);
       }
     }
 
-    hasNextPage = data.publication.posts.pageInfo.hasNextPage;
-    after = data.publication.posts.pageInfo.endCursor ?? undefined;
+    hasNextPage = pageInfo.hasNextPage;
+    after = pageInfo.endCursor ?? undefined;
   }
 
-  return Array.from(tagSlugs);
+  _cachedPostsWithTags = { slugs, tagSlugs: Array.from(tagSlugs) };
+  return _cachedPostsWithTags;
+}
+
+export async function getAllPostSlugs() {
+  const { slugs } = await fetchAllPostsWithTags();
+  return slugs;
+}
+
+export async function getAllTagSlugs() {
+  const { tagSlugs } = await fetchAllPostsWithTags();
+  return tagSlugs;
 }
 
 // ---------- Tag ----------

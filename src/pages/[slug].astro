@@ -78,7 +78,7 @@ const giscusEnabled =
     ogType="article"
     publication={publication}
     pageType="post"
-    lcpImage={!post.preferences?.stickCoverToBottom ? post.coverImage?.url : undefined}
+    lcpImage={post.coverImage?.url}
   >
     <article class="pb-16">
       {/* Post Header */}
@@ -137,7 +137,7 @@ const giscusEnabled =
       </Container>
 
       {/* Cover Image */}
-      {post.coverImage?.url && !post.preferences?.stickCoverToBottom && (
+      {post.coverImage?.url && (
         <Container class="mb-10">
           <img
             src={post.coverImage.url}
@@ -157,31 +157,21 @@ const giscusEnabled =
 
       {/* Content Area */}
       <Container>
-        <div class="mx-auto max-w-4xl lg:flex lg:gap-10">
+        <div class:list={['mx-auto lg:flex lg:gap-10', tocItems.length > 0 ? 'max-w-6xl' : 'max-w-5xl']}>
           {/* TOC sidebar */}
           {tocItems.length > 0 && (
-            <aside class="mb-8 lg:sticky lg:top-24 lg:mb-0 lg:w-64 lg:flex-shrink-0 lg:self-start">
+            <aside class="mb-8 lg:sticky lg:top-24 lg:mb-0 lg:w-64 lg:max-h-[calc(100vh-8rem)] lg:flex-shrink-0 lg:self-start lg:overflow-y-auto">
               <TableOfContents items={tocItems} />
             </aside>
           )}
 
           {/* Post content */}
-          <div class:list={['min-w-0 flex-1', tocItems.length === 0 && 'mx-auto max-w-3xl']}>
+          <div class:list={['min-w-0 flex-1', tocItems.length === 0 && 'mx-auto max-w-4xl']}>
             <div
               class="prose prose-lg dark:prose-invert max-w-none prose-headings:font-heading prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-img:rounded-lg"
               set:html={post.content.html}
             />
 
-            {/* Cover at bottom if stickCoverToBottom */}
-            {post.coverImage?.url && post.preferences?.stickCoverToBottom && (
-              <img
-                src={post.coverImage.url}
-                alt={post.title}
-                class="mt-8 w-full rounded-xl"
-                loading="lazy"
-                decoding="async"
-              />
-            )}
           </div>
         </div>
       </Container>
@@ -248,3 +238,75 @@ const giscusEnabled =
     </Container>
   </BaseLayout>
 )}
+
+<script is:inline>
+  // Mermaid: render <pre><code class="lang-mermaid"> blocks as SVG diagrams
+  if (!window.__mermaidInit) {
+    window.__mermaidInit = true;
+
+    (function () {
+      var MERMAID_SRC = 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js';
+      var loaded = false;
+
+      function getMermaidTheme() {
+        return document.documentElement.classList.contains('dark') ? 'dark' : 'default';
+      }
+
+      function renderMermaid() {
+        var codes = document.querySelectorAll('code.lang-mermaid');
+        if (!codes.length) return;
+
+        function run() {
+          window.mermaid.initialize({ startOnLoad: false, theme: getMermaidTheme() });
+
+          codes.forEach(function (code, i) {
+            var pre = code.parentElement;
+            if (!pre || pre.tagName !== 'PRE' || !pre.parentNode) return;
+            if (pre.dataset.mermaidRendered) return;
+            var text = (code.textContent || '').trim();
+            if (!text) return;
+
+            var id = 'mermaid-' + Date.now() + '-' + i;
+            var container = document.createElement('div');
+            container.className = 'mermaid';
+            pre.parentNode.insertBefore(container, pre);
+            pre.style.display = 'none';
+            pre.dataset.mermaidRendered = 'true';
+
+            // mermaid.render returns sanitized SVG (uses DOMPurify internally)
+            window.mermaid.render(id, text).then(function (result) {
+              var doc = new DOMParser().parseFromString(result.svg, 'image/svg+xml');
+              if (doc.querySelector('parsererror')) throw new Error('SVG parse error');
+              container.appendChild(doc.documentElement);
+            }).catch(function () {
+              pre.style.display = '';
+              container.remove();
+            });
+          });
+        }
+
+        if (loaded && window.mermaid) {
+          run();
+        } else {
+          var s = document.createElement('script');
+          s.src = MERMAID_SRC;
+          s.onload = function () { loaded = true; run(); };
+          document.head.appendChild(s);
+        }
+      }
+
+      // Re-render on dark mode toggle
+      new MutationObserver(function () {
+        document.querySelectorAll('pre[data-mermaid-rendered]').forEach(function (pre) {
+          var container = pre.previousElementSibling;
+          if (container && container.classList.contains('mermaid')) container.remove();
+          pre.style.display = '';
+          delete pre.dataset.mermaidRendered;
+        });
+        renderMermaid();
+      }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+      document.addEventListener('astro:page-load', renderMermaid);
+    })();
+  }
+</script>

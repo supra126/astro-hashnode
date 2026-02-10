@@ -76,27 +76,7 @@ export const SlugPostsByPublicationQuery = gql`
         edges {
           node {
             slug
-          }
-        }
-        pageInfo {
-          ...PageInfo
-        }
-      }
-    }
-  }
-`;
-
-export const PostsWithTagsQuery = gql`
-  ${PageInfoFragment}
-  query PostsWithTags($host: String!, $first: Int!, $after: String) {
-    publication(host: $host) {
-      posts(first: $first, after: $after) {
-        edges {
-          node {
-            slug
             tags {
-              id
-              name
               slug
             }
           }

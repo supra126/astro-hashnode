@@ -222,30 +222,38 @@ const siteLang = SITE_LANG;
       }
     }
 
-    // Event listeners
+    // Event listeners (on DOM elements — safe across navigations, old elements are GC'd)
     searchBtn?.addEventListener('click', openSearch);
     backdrop?.addEventListener('click', closeSearch);
-
-    document.addEventListener('keydown', (e) => {
-      // Cmd/Ctrl+K to open search
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        if (modal.classList.contains('hidden')) {
-          openSearch();
-        } else {
-          closeSearch();
-        }
-      }
-      // ESC to close
-      if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
-        closeSearch();
-      }
-    });
 
     input?.addEventListener('input', (e) => {
       clearTimeout(debounceTimer);
       const query = (e.target as HTMLInputElement).value.trim();
       debounceTimer = setTimeout(() => performSearch(query), 300);
     });
+  });
+
+  // Keyboard shortcuts on document — registered ONCE outside astro:page-load
+  document.addEventListener('keydown', (e) => {
+    const modal = document.getElementById('search-modal');
+    if (!modal) return;
+
+    // Cmd/Ctrl+K to toggle search
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault();
+      if (modal.classList.contains('hidden')) {
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        setTimeout(() => (document.getElementById('search-input') as HTMLInputElement | null)?.focus(), 50);
+      } else {
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+      }
+    }
+    // ESC to close
+    if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+      modal.classList.add('hidden');
+      document.body.style.overflow = '';
+    }
   });
 </script>

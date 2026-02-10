@@ -87,16 +87,19 @@ const pageCustomCSS =
 
     <!-- Dark mode: prevent flash of wrong theme -->
     <script is:inline>
-      function applyTheme() {
-        var stored = localStorage.getItem('theme');
-        if (stored === 'dark' || (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.remove('dark');
+      (function () {
+        function isDark() {
+          var stored = localStorage.getItem('theme');
+          return stored === 'dark' || (!stored && window.matchMedia('(prefers-color-scheme: dark)').matches);
         }
-      }
-      applyTheme();
-      document.addEventListener('astro:after-swap', applyTheme);
+        // Apply immediately on initial load
+        if (isDark()) document.documentElement.classList.add('dark');
+
+        // Apply to NEW document before swap — prevents flash during View Transitions
+        document.addEventListener('astro:before-swap', function (ev) {
+          if (isDark()) ev.newDocument.documentElement.classList.add('dark');
+        });
+      })();
     </script>
   </head>
   <body class="min-h-screen bg-white text-slate-900 antialiased dark:bg-neutral-950 dark:text-slate-100">

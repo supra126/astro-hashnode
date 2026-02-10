@@ -101,15 +101,15 @@ const siteTitle = publication.displayTitle || publication.title;
 
         const status = data.data?.subscribeToNewsletter?.status;
         if (status === 'PENDING') {
-          message!.textContent = 'Almost there! Please check your inbox and click the confirmation link to complete your subscription.';
+          if (message) message.textContent = 'Almost there! Please check your inbox and click the confirmation link to complete your subscription.';
         } else {
-          message!.textContent = 'You have been subscribed successfully!';
+          if (message) message.textContent = 'You have been subscribed successfully!';
         }
-        message!.classList.add('text-green-600');
+        message?.classList.add('text-green-600');
         if (emailInput) emailInput.value = '';
       } catch (err) {
-        message!.textContent = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
-        message!.classList.add('text-red-600');
+        if (message) message.textContent = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+        message?.classList.add('text-red-600');
       }
     });
   });

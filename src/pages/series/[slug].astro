@@ -24,7 +24,10 @@ export const getStaticPaths: GetStaticPaths = async () => {
 };
 
 const { slug } = Astro.params;
-const data = await getSeriesPageInitial(slug!, 20);
+if (!slug) {
+  return Astro.redirect('/404');
+}
+const data = await getSeriesPageInitial(slug, 20);
 const publication = data.publication;
 const series = publication.series;
 
