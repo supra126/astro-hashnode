@@ -168,7 +168,7 @@ const giscusEnabled =
           {/* Post content */}
           <div class:list={['min-w-0 flex-1', tocItems.length === 0 && 'mx-auto max-w-4xl']}>
             <div
-              class="prose prose-lg dark:prose-invert max-w-none prose-headings:font-heading prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-img:rounded-lg"
+              class="prose md:prose-lg dark:prose-invert max-w-none prose-headings:font-heading prose-a:text-blue-600 dark:prose-a:text-blue-400 prose-img:rounded-lg"
               set:html={post.content.html}
             />
 
@@ -231,7 +231,7 @@ const giscusEnabled =
           {staticPage!.title}
         </h1>
         <div
-          class="prose prose-lg dark:prose-invert max-w-none prose-headings:font-heading prose-a:text-blue-600 dark:prose-a:text-blue-400"
+          class="prose md:prose-lg dark:prose-invert max-w-none prose-headings:font-heading prose-a:text-blue-600 dark:prose-a:text-blue-400"
           set:html={staticPage!.content.html}
         />
       </div>
@@ -245,7 +245,8 @@ const giscusEnabled =
     window.__mermaidInit = true;
 
     (function () {
-      var MERMAID_SRC = 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js';
+      var MERMAID_SRC = 'https://cdn.jsdelivr.net/npm/mermaid@11.12.2/dist/mermaid.min.js';
+      var MERMAID_SRI = 'sha384-1ggI9FC3CkghppRD/XCR4aD+jp4DxwXlJIW0wxhyTLNKuiZEW3c4BwcjKXl0iVAJ';
       var loaded = false;
 
       function getMermaidTheme() {
@@ -290,6 +291,8 @@ const giscusEnabled =
         } else {
           var s = document.createElement('script');
           s.src = MERMAID_SRC;
+          s.integrity = MERMAID_SRI;
+          s.crossOrigin = 'anonymous';
           s.onload = function () { loaded = true; run(); };
           document.head.appendChild(s);
         }
@@ -309,4 +312,43 @@ const giscusEnabled =
       document.addEventListener('astro:page-load', renderMermaid);
     })();
   }
+</script>
+
+<script is:inline>
+  (function initLightbox() {
+    function setup() {
+      var imgs = document.querySelectorAll('.prose img');
+      imgs.forEach(function (img) {
+        if (img.dataset.lightbox) return;
+        img.dataset.lightbox = 'true';
+        img.style.cursor = 'zoom-in';
+        img.addEventListener('click', function () {
+          var dialog = document.createElement('dialog');
+          dialog.className = 'img-lightbox';
+          dialog.setAttribute('aria-label', img.alt || 'Image preview');
+          var closeBtn = document.createElement('button');
+          closeBtn.className = 'img-lightbox-close';
+          closeBtn.setAttribute('aria-label', 'Close');
+          closeBtn.textContent = '\u00d7';
+          closeBtn.addEventListener('click', function () { dialog.close(); });
+          var clone = document.createElement('img');
+          clone.src = img.src;
+          clone.alt = img.alt || '';
+          dialog.appendChild(closeBtn);
+          dialog.appendChild(clone);
+          document.body.appendChild(dialog);
+          dialog.showModal();
+          dialog.addEventListener('click', function (e) {
+            if (e.target === dialog) {
+              dialog.close();
+            }
+          });
+          dialog.addEventListener('close', function () {
+            dialog.remove();
+          });
+        });
+      });
+    }
+    document.addEventListener('astro:page-load', setup);
+  })();
 </script>

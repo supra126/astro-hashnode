@@ -4,12 +4,15 @@ import Container from '../../components/Container.astro';
 import PostCard from '../../components/PostCard.astro';
 import Pagination from '../../components/Pagination.astro';
 import { getHomePageInitial, getHomePagePosts } from '../../lib/api';
+import { PINNED_POST_IN_LIST } from '../../lib/client';
 import type { GetStaticPaths } from 'astro';
 
 export const getStaticPaths: GetStaticPaths = async () => {
   const POSTS_PER_PAGE = 9;
+  const { publication } = await getHomePageInitial();
   const { publication: postsData } = await getHomePagePosts(1);
-  const totalPosts = postsData.posts.totalDocuments ?? 0;
+  const shouldFilter = !PINNED_POST_IN_LIST && !!publication.pinnedPost;
+  const totalPosts = (postsData.posts.totalDocuments ?? 0) - (shouldFilter ? 1 : 0);
   const totalPages = Math.ceil(totalPosts / POSTS_PER_PAGE);
 
   // Generate pages 2..N (page 1 is handled by index.astro)
@@ -35,7 +38,10 @@ const { pageNum, after, totalPages } = Astro.props;
 
 const { publication } = await getHomePageInitial();
 const { publication: postsData } = await getHomePagePosts(POSTS_PER_PAGE, after);
-const posts = postsData.posts.edges.map((e) => e.node);
+const pinnedPostId = !PINNED_POST_IN_LIST ? publication.pinnedPost?.id : undefined;
+const posts = postsData.posts.edges
+  .map((e) => e.node)
+  .filter((post) => !pinnedPostId || post.id !== pinnedPostId);
 
 const siteTitle = publication.displayTitle || publication.title;
 ---
