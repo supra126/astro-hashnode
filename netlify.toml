@@ -4,3 +4,14 @@
 
 [build.environment]
   NODE_VERSION = "20"
+
+# Proxy Hashnode analytics (avoid CORS)
+[[redirects]]
+  from = "/ping/data-event"
+  to = "https://hn-ping2.hashnode.com/api/data-event"
+  status = 200
+
+[[redirects]]
+  from = "/api/analytics"
+  to = "https://user-analytics.hashnode.com/api/analytics"
+  status = 200

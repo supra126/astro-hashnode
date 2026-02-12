@@ -149,7 +149,7 @@ const siteLang = SITE_LANG;
       if (node.coverImage?.url) {
         const img = document.createElement('img');
         img.src = node.coverImage.url;
-        img.alt = '';
+        img.alt = node.title || '';
         img.loading = 'lazy';
         img.className = 'hidden h-16 w-24 flex-shrink-0 rounded-lg object-cover sm:block';
         a.appendChild(img);

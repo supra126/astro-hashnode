@@ -2,5 +2,15 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "pnpm build",
   "outputDirectory": "dist",
-  "framework": "astro"
+  "framework": "astro",
+  "rewrites": [
+    {
+      "source": "/ping/data-event",
+      "destination": "https://hn-ping2.hashnode.com/api/data-event"
+    },
+    {
+      "source": "/api/analytics",
+      "destination": "https://user-analytics.hashnode.com/api/analytics"
+    }
+  ]
 }

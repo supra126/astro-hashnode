@@ -1,15 +1,7 @@
 import type { APIRoute } from 'astro';
 import { getRSSFeed } from '../lib/api';
 import { SITE_LANG } from '../lib/client';
-
-function escapeXml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-}
+import { escapeXml } from '../lib/utils';
 
 function escapeCdata(str: string): string {
   return str.replace(/]]>/g, ']]]]><![CDATA[>');

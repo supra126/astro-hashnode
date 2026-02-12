@@ -1,16 +1,8 @@
 import type { APIRoute } from 'astro';
 import { getSitemap, getMoreSitemapPosts } from '../lib/api';
+import { escapeXml } from '../lib/utils';
 
 const MAX_POSTS = 1000;
-
-function escapeXml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
-}
 
 export const GET: APIRoute = async () => {
   const initialData = await getSitemap(100, undefined, 50);
@@ -20,13 +12,16 @@ export const GET: APIRoute = async () => {
   const posts = publication.posts.edges.map((e) => e.node);
   const staticPages = publication.staticPages.edges.map((e) => e.node);
 
-  // Paginate through remaining posts
+  // Paginate through remaining posts (capped to prevent runaway loops)
+  const MAX_PAGES = 20;
   let pageInfo = publication.posts.pageInfo;
-  while (pageInfo.hasNextPage && posts.length < MAX_POSTS && pageInfo.endCursor) {
+  let pagesLoaded = 0;
+  while (pageInfo.hasNextPage && posts.length < MAX_POSTS && pageInfo.endCursor && pagesLoaded < MAX_PAGES) {
     const moreData = await getMoreSitemapPosts(100, pageInfo.endCursor);
     const morePosts = moreData.publication.posts.edges.map((e) => e.node);
     posts.push(...morePosts);
     pageInfo = moreData.publication.posts.pageInfo;
+    pagesLoaded++;
   }
 
   // Collect unique tag slugs

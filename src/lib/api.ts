@@ -31,6 +31,7 @@ import type {
   SearchResponse,
   NewsletterResponse,
   SubscribeToNewsletterResponse,
+  PostSimple,
 } from '../types';
 
 const host = PUBLICATION_HOST;
@@ -74,7 +75,7 @@ export async function getPostsByPublication(first: number = 10, after?: string) 
 }
 
 export async function getMorePosts(first: number = 6, after?: string) {
-  return gqlClient.request<{ publication: { posts: { edges: Array<{ node: any }>; pageInfo: { endCursor: string | null; hasNextPage: boolean } } } }>(
+  return gqlClient.request<{ publication: { posts: { edges: Array<{ node: PostSimple & { comments?: { totalDocuments: number } } }>; pageInfo: { endCursor: string | null; hasNextPage: boolean } } } }>(
     MorePostsByPublicationQuery,
     { host, first, after },
   );

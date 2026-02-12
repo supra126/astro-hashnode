@@ -9,6 +9,7 @@ import GiscusComments from '../components/GiscusComments.astro';
 import { getSinglePost, getHomePagePosts, getPageByPublication, getAllPostSlugs } from '../lib/api';
 import { SITE_LANG } from '../lib/client';
 import type { GetStaticPaths } from 'astro';
+import type { PostThumbnail } from '../types';
 
 export const getStaticPaths: GetStaticPaths = async () => {
   const slugs = await getAllPostSlugs();
@@ -40,7 +41,7 @@ if (!post && !staticPage) {
 }
 
 // Fetch related posts for post pages
-let relatedPosts: any[] = [];
+let relatedPosts: PostThumbnail[] = [];
 if (post) {
   const { publication: moreData } = await getHomePagePosts(3);
   relatedPosts = moreData.posts.edges
@@ -79,6 +80,8 @@ const giscusEnabled =
     publication={publication}
     pageType="post"
     lcpImage={post.coverImage?.url}
+    postId={post.id}
+    seriesId={post.series?.id}
   >
     <article class="pb-16">
       {/* Post Header */}
@@ -224,6 +227,7 @@ const giscusEnabled =
     ogImage={ogImage}
     publication={publication}
     pageType="static"
+    staticPageId={staticPage?.id}
   >
     <Container class="py-12">
       <div class="mx-auto max-w-3xl">

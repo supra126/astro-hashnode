@@ -1,0 +1,131 @@
+---
+/**
+ * Hashnode page-view analytics.
+ *
+ * Sends pageview events to Hashnode's internal analytics and advanced analytics
+ * dashboard so that view counts are tracked correctly when using a headless frontend.
+ *
+ * The requests are proxied through Vercel rewrites to avoid CORS issues:
+ *   /ping/data-event  → https://hn-ping2.hashnode.com/api/data-event
+ *   /api/analytics     → https://user-analytics.hashnode.com/api/analytics
+ */
+
+interface Props {
+  publicationId: string;
+  postId?: string | null;
+  seriesId?: string | null;
+  staticPageId?: string | null;
+}
+
+const { publicationId, postId, seriesId, staticPageId } = Astro.props;
+---
+
+<script
+  is:inline
+  define:vars={{ publicationId, postId, seriesId, staticPageId }}
+>
+(function () {
+  if (typeof window === 'undefined') return;
+  if (window.location.hostname === 'localhost') return;
+
+  /** Simple UUID v4 generator (no external dependency) */
+  function uuidv4() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+      var r = (Math.random() * 16) | 0;
+      var v = c === 'x' ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
+
+  /** Read / write a simple cookie */
+  function getCookie(name) {
+    var match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return match ? decodeURIComponent(match[2]) : null;
+  }
+  function setCookie(name, value, days) {
+    var d = new Date();
+    d.setTime(d.getTime() + days * 86400000);
+    document.cookie = name + '=' + encodeURIComponent(value) + ';expires=' + d.toUTCString() + ';path=/;SameSite=Lax';
+  }
+
+  /** 1. Hashnode internal analytics (Amplitude-style) */
+  function sendInternalAnalytics() {
+    var deviceId = getCookie('__amplitudeDeviceID');
+    if (!deviceId) {
+      deviceId = uuidv4();
+      setCookie('__amplitudeDeviceID', deviceId, 730); // 2 years
+    }
+
+    var event = {
+      event_type: 'pageview',
+      time: new Date().getTime(),
+      device_id: deviceId,
+      event_properties: {
+        hostname: window.location.hostname,
+        url: window.location.pathname,
+        eventType: 'pageview',
+        publicationId: publicationId,
+        dateAdded: new Date().getTime(),
+        referrer: document.referrer,
+      },
+    };
+
+    fetch('/ping/data-event', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ events: [event] }),
+    }).catch(function () {});
+  }
+
+  /** 2. Hashnode advanced analytics dashboard */
+  function sendAdvancedAnalytics() {
+    if (!publicationId) return;
+
+    var event = {
+      type: 'pageview',
+      payload: {
+        publicationId: publicationId,
+        postId: postId || null,
+        seriesId: seriesId || null,
+        pageId: staticPageId || null,
+        url: window.location.href,
+        referrer: document.referrer || null,
+        language: navigator.language || null,
+        screen: window.screen.width + 'x' + window.screen.height,
+      },
+    };
+
+    var blob = new Blob(
+      [JSON.stringify({ events: [event] })],
+      { type: 'application/json; charset=UTF-8' }
+    );
+
+    var sent = false;
+    try {
+      if (navigator.sendBeacon) {
+        sent = navigator.sendBeacon('/api/analytics', blob);
+      }
+    } catch (_) {}
+
+    if (!sent) {
+      fetch('/api/analytics', {
+        method: 'POST',
+        body: blob,
+        credentials: 'omit',
+        keepalive: true,
+      }).catch(function () {});
+    }
+  }
+
+  /** Send both on initial load */
+  function trackPageView() {
+    sendInternalAnalytics();
+    sendAdvancedAnalytics();
+  }
+
+  trackPageView();
+
+  /** Re-track on View Transitions (SPA navigation) */
+  document.addEventListener('astro:after-swap', trackPageView);
+})();
+</script>

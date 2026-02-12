@@ -41,18 +41,18 @@ for (let i = start; i <= end; i++) {
     {/* Page numbers */}
     {start > 1 && (
       <>
-        <a href={getPageUrl(1)} class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">1</a>
+        <a href={getPageUrl(1)} class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" aria-label="Go to page 1">1</a>
         {start > 2 && <span class="px-1 text-slate-400">...</span>}
       </>
     )}
 
     {pages.map((page) => (
       page === currentPage ? (
-        <span class="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white" aria-current="page">
+        <span class="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white" aria-current="page" aria-label={`Page ${page}, current page`}>
           {page}
         </span>
       ) : (
-        <a href={getPageUrl(page)} class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
+        <a href={getPageUrl(page)} class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" aria-label={`Go to page ${page}`}>
           {page}
         </a>
       )
@@ -61,7 +61,7 @@ for (let i = start; i <= end; i++) {
     {end < totalPages && (
       <>
         {end < totalPages - 1 && <span class="px-1 text-slate-400">...</span>}
-        <a href={getPageUrl(totalPages)} class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">{totalPages}</a>
+        <a href={getPageUrl(totalPages)} class="rounded-lg px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800" aria-label={`Go to page ${totalPages}`}>{totalPages}</a>
       </>
     )}
 

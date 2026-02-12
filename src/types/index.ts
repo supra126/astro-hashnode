@@ -345,7 +345,7 @@ export interface SinglePostResponse {
 
 export interface TagInitialResponse {
   tag: Tag | null;
-  publication: Publication & {
+  publication: Omit<Publication, 'posts'> & {
     posts: Connection<PostThumbnail>;
   };
 }
@@ -367,7 +367,7 @@ export interface SearchResponse {
 }
 
 export interface RSSFeedResponse {
-  publication: Publication & {
+  publication: Omit<Publication, 'posts'> & {
     posts: Connection<{
       id: string;
       title: string;
